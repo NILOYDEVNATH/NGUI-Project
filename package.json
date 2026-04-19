@@ -1,0 +1,30 @@
+{
+  "name": "supabase-realtime-display",
+  "version": "1.0.0",
+  "description": "Real-time text display system using Raspberry Pi and Supabase",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "logs": "tail -f logs/display.log",
+    "setup:service": "sudo cp supabase-display.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable supabase-display"
+  },
+  "keywords": [
+    "raspberry-pi",
+    "supabase",
+    "realtime",
+    "display",
+    "led",
+    "monitor"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

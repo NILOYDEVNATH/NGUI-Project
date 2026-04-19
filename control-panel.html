@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Display Control Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #999;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="color"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="color"]:focus,
+        input[type="number"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .color-preview {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            border-radius: 6px;
+            margin-left: 12px;
+            border: 2px solid #e0e0e0;
+            vertical-align: middle;
+            background: #FFFFFF;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            text-align: center;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+
+        .config-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+        }
+
+        .config-section h3 {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .preset-colors {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .color-btn {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+            background: white;
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .recent-messages {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .recent-messages h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .message-item {
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .message-item:hover {
+            background: #f0f0f0;
+        }
+
+        .message-text {
+            color: #333;
+            margin-bottom: 5px;
+            font-size: clamp(2rem, 10vw, 10rem);
+        }
+
+        .message-meta {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .connection-status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ccc;
+            margin-right: 8px;
+            animation: blink 2s infinite;
+        }
+
+        .connection-status.connected {
+            background: #0f0;
+            animation: none;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📺 Display Control</h1>
+        <p class="subtitle">
+            <span class="connection-status" id="statusDot"></span>
+            <span id="statusText">Connecting to Supabase...</span>
+        </p>
+
+        <div class="config-section">
+            <h3>Supabase Configuration</h3>
+            <div class="form-group">
+                <label>Supabase URL</label>
+                <input type="text" id="supabaseUrl" placeholder="https://your-project.supabase.co">
+            </div>
+            <div class="form-group">
+                <label>Anon Key</label>
+                <input type="text" id="supabaseKey" placeholder="eyJhbGc...">
+            </div>
+        </div>
+
+        <form id="messageForm">
+            <div class="form-group">
+                <label>Message Text *</label>
+                <textarea id="messageText" required placeholder="Enter text to display..."></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Color</label>
+                    <div style="display: flex; align-items: center;">
+                        <input type="color" id="messageColor" value="#FFFFFF">
+                        <span class="color-preview" id="colorPreview"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Display Duration (ms)</label>
+                    <input type="number" id="duration" value="5000" min="1000" step="1000">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Quick Colors</label>
+                <div class="preset-colors" id="presetColors"></div>
+            </div>
+
+            <button type="submit" id="sendBtn">📤 Send to Display</button>
+
+            <div class="status" id="status"></div>
+        </form>
+
+        <div class="recent-messages" id="recentMessagesContainer" style="display: none;">
+            <h3>Recent Messages</h3>
+            <div id="recentMessages"></div>
+        </div>
+    </div>
+
+    <script>
+        const PRESET_COLORS = {
+            'White': '#FFFFFF',
+            'Red': '#FF0000',
+            'Green': '#00FF00',
+            'Blue': '#0000FF',
+            'Yellow': '#FFFF00',
+            'Cyan': '#00FFFF',
+            'Magenta': '#FF00FF',
+            'Orange': '#FFA500'
+        };
+
+        let supabase;
+        let recentMessages = [];
+
+        // Initialize preset colors
+        function initPresetColors() {
+            const container = document.getElementById('presetColors');
+            Object.entries(PRESET_COLORS).forEach(([name, color]) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'color-btn';
+                btn.style.backgroundColor = color;
+                btn.textContent = name;
+                btn.onclick = () => {
+                    document.getElementById('messageColor').value = color;
+                    updateColorPreview();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        // Update color preview
+        function updateColorPreview() {
+            const color = document.getElementById('messageColor').value;
+            document.getElementById('colorPreview').style.backgroundColor = color;
+        }
+
+        // Load Supabase JS
+        async function initSupabase() {
+            if (!window.supabase) {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+                script.onload = () => {
+                    setupSupabase();
+                };
+                document.head.appendChild(script);
+            } else {
+                setupSupabase();
+            }
+        }
+
+        function setupSupabase() {
+            // Load from localStorage or prompt
+            let url = localStorage.getItem('supabaseUrl');
+            let key = localStorage.getItem('supabaseKey');
+
+            if (url && key) {
+                document.getElementById('supabaseUrl').value = url;
+                document.getElementById('supabaseKey').value = key;
+                connectSupabase(url, key);
+            }
+        }
+
+        // Connect to Supabase
+        function connectSupabase(url, key) {
+            if (!url || !key) {
+                showStatus('Please enter Supabase credentials', 'error');
+                return;
+            }
+
+            try {
+                supabase = window.supabase.createClient(url, key);
+                localStorage.setItem('supabaseUrl', url);
+                localStorage.setItem('supabaseKey', key);
+
+                updateConnectionStatus(true);
+                loadRecentMessages();
+                showStatus('Connected to Supabase', 'success');
+            } catch (error) {
+                updateConnectionStatus(false);
+                showStatus('Failed to connect: ' + error.message, 'error');
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+
+            if (connected) {
+                dot.classList.add('connected');
+                text.textContent = '✓ Connected to Supabase';
+            } else {
+                dot.classList.remove('connected');
+                text.textContent = '✗ Not connected';
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    status.className = 'status';
+                }, 5000);
+            }
+        }
+
+        // Send message
+        document.getElementById('messageForm').onsubmit = async (e) => {
+            e.preventDefault();
+
+            // Check credentials
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+
+            if (!url || !key) {
+                showStatus('Please enter Supabase credentials', 'error');
+                return;
+            }
+
+            if (!supabase) {
+                connectSupabase(url, key);
+                if (!supabase) return;
+            }
+
+            const text = document.getElementById('messageText').value;
+            const color = document.getElementById('messageColor').value;
+            const duration = parseInt(document.getElementById('duration').value);
+
+            if (!text) {
+                showStatus('Message cannot be empty', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('sendBtn');
+            btn.disabled = true;
+            showStatus('Sending...', 'loading');
+
+            try {
+                const { error } = await supabase.from('messages').insert({
+                    text,
+                    color,
+                    display_duration_ms: duration
+                });
+
+                if (error) {
+                    showStatus('Error: ' + error.message, 'error');
+                } else {
+                    showStatus('✓ Message sent!', 'success');
+                    document.getElementById('messageText').value = '';
+                    loadRecentMessages();
+                }
+            } catch (err) {
+                showStatus('Error: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        };
+
+        // Load recent messages
+        async function loadRecentMessages() {
+            if (!supabase) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('messages')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+
+                if (error) throw error;
+
+                recentMessages = data || [];
+                displayRecentMessages();
+            } catch (err) {
+                console.error('Error loading messages:', err);
+            }
+        }
+
+        function displayRecentMessages() {
+            const container = document.getElementById('recentMessagesContainer');
+            const list = document.getElementById('recentMessages');
+
+            if (recentMessages.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'block';
+            list.innerHTML = recentMessages.map(msg => `
+                <div class="message-item" onclick="replyMessage('${msg.text.replace(/'/g, "\\'")}', '${msg.color}')">
+                    <div class="message-text">${msg.text}</div>
+                    <div class="message-meta">
+                        ${msg.color} • ${new Date(msg.created_at).toLocaleTimeString()}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function replyMessage(text, color) {
+            document.getElementById('messageText').value = text;
+            document.getElementById('messageColor').value = color;
+            updateColorPreview();
+            document.getElementById('messageText').focus();
+        }
+
+        // Event listeners
+        document.getElementById('messageColor').addEventListener('change', updateColorPreview);
+        document.getElementById('supabaseUrl').addEventListener('change', () => {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+            if (url && key) connectSupabase(url, key);
+        });
+        document.getElementById('supabaseKey').addEventListener('change', () => {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+            if (url && key) connectSupabase(url, key);
+        });
+
+        // Initialize
+        initPresetColors();
+        updateColorPreview();
+        initSupabase();
+
+        // Auto-load messages every 5 seconds
+        setInterval(loadRecentMessages, 5000);
+    </script>
+</body>
+</html>

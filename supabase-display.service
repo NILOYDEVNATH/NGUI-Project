@@ -1,0 +1,32 @@
+[Unit]
+Description=Supabase Real-Time Text Display Service
+Documentation=https://github.com/your-repo
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/supabase-display
+StandardOutput=journal
+StandardError=journal
+
+# Start the service
+ExecStart=/usr/bin/node /home/pi/supabase-display/index.js
+
+# Restart configuration
+Restart=on-failure
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Environment
+Environment="NODE_ENV=production"
+
+[Install]
+WantedBy=multi-user.target
