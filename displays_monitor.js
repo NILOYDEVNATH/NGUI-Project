@@ -8,6 +8,8 @@ const http = require('http');
 let server;
 let onUserIdSubmit = async () => {};
 let getSelectedUserId = () => '';
+let displayMode = 'monitor';
+let enableBuiltInKeyboard = false;
 
 let currentState = {
   text: 'Enter your user ID to load departures',
@@ -18,14 +20,20 @@ let currentState = {
   departures: []
 };
 
+function getDisplayLabel() {
+  return displayMode === 'kiosk' ? 'Kiosk' : 'Monitor';
+}
+
 const logger = {
-  info: (msg, data) => console.log(`[Monitor] ${msg}`, data || ''),
-  error: (msg, data) => console.error(`[Monitor] ${msg}`, data || '')
+  info: (msg, data) => console.log(`[${getDisplayLabel()}] ${msg}`, data || ''),
+  error: (msg, data) => console.error(`[${getDisplayLabel()}] ${msg}`, data || '')
 };
 
 async function init(port = 8080, options = {}) {
   onUserIdSubmit = typeof options.onUserIdSubmit === 'function' ? options.onUserIdSubmit : onUserIdSubmit;
   getSelectedUserId = typeof options.getSelectedUserId === 'function' ? options.getSelectedUserId : getSelectedUserId;
+  displayMode = options.mode === 'kiosk' ? 'kiosk' : 'monitor';
+  enableBuiltInKeyboard = displayMode === 'kiosk';
   currentState.selectedUserId = getSelectedUserId() || '';
 
   return new Promise((resolve, reject) => {
@@ -139,7 +147,9 @@ function getDisplayHTML() {
       --bg-top: #09111c;
       --bg-bottom: #02050a;
       --panel-bg: rgba(10, 18, 28, 0.88);
-      --panel-border: rgba(148, 163, 184, 0.14);
+      --panel-strong: rgba(8, 14, 24, 0.96);
+      --panel-soft: rgba(20, 30, 45, 0.84);
+      --panel-border: rgba(148, 163, 184, 0.16);
       --row-border: rgba(255, 255, 255, 0.08);
       --route-bg-pink: linear-gradient(135deg, #d94fb2 0%, #b83280 100%);
       --route-bg-yellow: linear-gradient(135deg, #ffd84c 0%, #ffb400 100%);
@@ -148,6 +158,14 @@ function getDisplayHTML() {
       --text-soft: #a5b4c7;
       --time-accent: #8df7a5;
       --shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+      --keyboard-bg: linear-gradient(180deg, rgba(12, 19, 30, 0.98), rgba(6, 11, 20, 0.98));
+      --keyboard-key: linear-gradient(180deg, #1a2637 0%, #111b28 100%);
+      --keyboard-key-alt: linear-gradient(180deg, #24354b 0%, #172434 100%);
+      --keyboard-key-submit: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+      --keyboard-gap: 16px;
+      --keyboard-reserved-space: clamp(176px, 36vh, 226px);
+      --form-shell-width: min(620px, 100%);
+      --focus-ring: 0 0 0 3px rgba(14, 165, 233, 0.22);
     }
 
     html, body {
@@ -162,19 +180,24 @@ function getDisplayHTML() {
     }
 
     body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
       overflow: hidden;
-      padding: clamp(16px, 2vw, 28px);
+      padding: clamp(10px, 2.2vw, 18px);
     }
 
     .display-container {
       width: 100%;
       height: 100%;
-      display: flex;
-      align-items: stretch;
-      justify-content: center;
+      display: grid;
+      place-items: stretch center;
+      transition: padding-bottom 0.24s ease, padding-top 0.24s ease;
+    }
+
+    .display-container.form-screen-mode {
+      place-items: center;
+    }
+
+    body.keyboard-visible .display-container.form-screen-mode {
+      padding-bottom: calc(var(--keyboard-reserved-space) + var(--keyboard-gap));
     }
 
     .message-text {
@@ -190,6 +213,23 @@ function getDisplayHTML() {
       grid-template-rows: auto minmax(0, 1fr);
       gap: 10px;
       overflow: hidden;
+      transition: width 0.24s ease, min-height 0.24s ease, padding 0.24s ease, transform 0.24s ease, box-shadow 0.24s ease;
+    }
+
+    .message-text.form-screen {
+      width: var(--form-shell-width);
+      height: auto;
+      min-height: min(318px, 100%);
+      max-height: 100%;
+      padding: clamp(16px, 3vw, 24px);
+      border-radius: 26px;
+      background: linear-gradient(180deg, rgba(13, 20, 31, 0.98), rgba(7, 12, 20, 0.96));
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+      animation: panelLift 0.32s ease-out;
+    }
+
+    body.keyboard-visible .message-text.form-screen {
+      transform: translateY(-2px);
     }
 
     .board-header {
@@ -199,6 +239,11 @@ function getDisplayHTML() {
       gap: 12px;
       padding-bottom: 8px;
       border-bottom: 1px solid var(--row-border);
+    }
+
+    .form-screen .board-header {
+      padding-bottom: 12px;
+      margin-bottom: 2px;
     }
 
     .board-clock {
@@ -348,82 +393,180 @@ function getDisplayHTML() {
       align-items: center;
       justify-content: center;
       height: 100%;
+      min-height: 0;
     }
 
     .user-form-card,
     .empty-card {
-      width: min(640px, 100%);
-      padding: clamp(24px, 4vw, 40px);
-      border-radius: 24px;
+      width: 100%;
+      padding: clamp(18px, 3.5vw, 28px);
+      border-radius: 22px;
       border: 1px solid var(--row-border);
-      background: rgba(255, 255, 255, 0.03);
+      background: linear-gradient(180deg, rgba(17, 27, 41, 0.82), rgba(10, 16, 27, 0.9));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
       text-align: center;
     }
 
     .user-form-title,
     .empty-title {
-      font-size: clamp(2rem, 4vw, 3.8rem);
+      font-size: clamp(1.8rem, 5vw, 2.9rem);
       font-weight: 800;
-      line-height: 1;
+      line-height: 0.96;
+      letter-spacing: 0.02em;
       color: var(--text-main);
     }
 
     .user-form-help,
     .empty-help {
-      margin-top: 14px;
-      font-size: clamp(1rem, 1.5vw, 1.35rem);
-      color: rgba(255, 255, 255, 0.7);
-      line-height: 1.4;
+      margin-top: 12px;
+      font-size: clamp(0.98rem, 2.1vw, 1.14rem);
+      color: rgba(255, 255, 255, 0.74);
+      line-height: 1.38;
     }
 
     .user-form {
-      margin-top: 24px;
-      display: flex;
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 12px;
-      flex-wrap: wrap;
-      justify-content: center;
+      align-items: stretch;
     }
 
     .user-input {
-      flex: 1 1 320px;
-      min-height: 64px;
-      padding: 0 18px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      min-width: 0;
+      min-height: 68px;
+      padding: 0 22px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
       border-radius: 18px;
-      background: rgba(3, 7, 18, 0.75);
+      background: linear-gradient(180deg, rgba(5, 10, 18, 0.94), rgba(13, 22, 35, 0.84));
       color: var(--text-main);
-      font-size: clamp(1rem, 1.4vw, 1.2rem);
+      font-size: clamp(1.14rem, 2.5vw, 1.45rem);
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
       outline: none;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .user-input:focus {
+      border-color: rgba(56, 189, 248, 0.62);
+      box-shadow: var(--focus-ring);
     }
 
     .user-input::placeholder {
-      color: rgba(255, 255, 255, 0.35);
+      color: rgba(255, 255, 255, 0.32);
+      letter-spacing: 0.08em;
     }
 
     .user-submit {
-      min-width: 180px;
-      min-height: 64px;
-      padding: 0 26px;
+      min-width: 210px;
+      min-height: 68px;
+      padding: 0 28px;
       border: 0;
       border-radius: 18px;
       background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
       color: white;
-      font-size: clamp(1rem, 1.3vw, 1.15rem);
+      font-size: clamp(1.02rem, 2vw, 1.18rem);
       font-weight: 700;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
       cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+    }
+
+    .user-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 34px rgba(37, 99, 235, 0.28);
     }
 
     .user-submit:disabled {
       opacity: 0.55;
       cursor: wait;
+      transform: none;
+      box-shadow: none;
     }
 
     .form-feedback {
-      min-height: 26px;
-      margin-top: 16px;
-      font-size: clamp(0.95rem, 1.2vw, 1.05rem);
+      min-height: 24px;
+      margin-top: 12px;
+      font-size: clamp(0.92rem, 1.8vw, 1rem);
       color: #fca5a5;
+    }
+
+    .keyboard-caption {
+      margin-top: 12px;
+      font-size: clamp(0.78rem, 1.5vw, 0.9rem);
+      color: rgba(165, 180, 199, 0.82);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .keyboard-host {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: none;
+      padding: 0 10px 10px;
+      z-index: 950;
+    }
+
+    .keyboard-host.visible {
+      display: block;
+    }
+
+    .keyboard-shell {
+      width: min(620px, calc(100vw - 20px));
+      margin: 0 auto;
+      padding: 10px;
+      border: 1px solid var(--panel-border);
+      border-radius: 22px;
+      background: var(--keyboard-bg);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
+      backdrop-filter: blur(8px);
+    }
+
+    .keyboard-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .keyboard-row {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .keyboard-row.keyboard-row-actions {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .keyboard-key {
+      min-height: 42px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--keyboard-key);
+      color: var(--text-main);
+      font-size: clamp(0.92rem, 1.8vw, 1rem);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.12s ease;
+    }
+
+    .keyboard-key:active {
+      background: var(--keyboard-key-alt);
+      transform: translateY(1px);
+    }
+
+    .keyboard-key.keyboard-key-action {
+      background: rgba(34, 50, 71, 0.95);
+    }
+
+    .keyboard-key.keyboard-key-submit {
+      background: var(--keyboard-key-submit);
+      color: white;
     }
 
     .current-user {
@@ -441,7 +584,7 @@ function getDisplayHTML() {
 
     .status {
       position: fixed;
-      bottom: 18px;
+      top: 14px;
       right: 22px;
       font-size: clamp(10px, 1.2vw, 14px);
       color: #7ddc91;
@@ -483,6 +626,17 @@ function getDisplayHTML() {
       }
     }
 
+    @keyframes panelLift {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.985);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
     @media (max-width: 900px) {
       .message-text {
         padding: 12px;
@@ -502,6 +656,126 @@ function getDisplayHTML() {
         grid-column: 2;
         justify-items: start;
       }
+
+      .keyboard-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .keyboard-row.keyboard-row-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .display-container.form-screen-mode .message-text {
+        width: min(100%, 600px);
+      }
+
+      .status {
+        right: 16px;
+      }
+    }
+
+    @media (max-width: 560px), (max-height: 540px) {
+      body {
+        padding: 8px;
+      }
+
+      .message-text {
+        padding: 10px;
+        gap: 8px;
+      }
+
+      .message-text.form-screen {
+        min-height: min(284px, 100%);
+        padding: 14px;
+      }
+
+      .board-header {
+        gap: 8px;
+        padding-bottom: 8px;
+      }
+
+      .current-user,
+      .board-clock {
+        font-size: 0.8rem;
+      }
+
+      .user-form-card,
+      .empty-card {
+        padding: 16px;
+      }
+
+      .user-form-title,
+      .empty-title {
+        font-size: clamp(1.6rem, 5.2vw, 2.2rem);
+      }
+
+      .user-form-help,
+      .empty-help {
+        margin-top: 10px;
+        font-size: 0.94rem;
+        line-height: 1.32;
+      }
+
+      .user-form {
+        margin-top: 14px;
+        grid-template-columns: minmax(0, 1fr) 190px;
+        gap: 10px;
+      }
+
+      .user-input,
+      .user-submit {
+        min-height: 58px;
+      }
+
+      .user-input {
+        padding: 0 18px;
+        font-size: clamp(1rem, 2.6vw, 1.2rem);
+      }
+
+      .user-submit {
+        min-width: 0;
+        padding: 0 18px;
+        font-size: 0.96rem;
+      }
+
+      .form-feedback {
+        margin-top: 10px;
+        min-height: 20px;
+      }
+
+      .keyboard-caption {
+        margin-top: 10px;
+        font-size: 0.76rem;
+      }
+
+      .keyboard-host {
+        padding: 0 8px 8px;
+      }
+
+      .keyboard-shell {
+        width: min(620px, calc(100vw - 16px));
+        padding: 8px;
+      }
+
+      .keyboard-grid,
+      .keyboard-row {
+        gap: 6px;
+      }
+
+      .keyboard-key {
+        min-height: 36px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+      }
+
+      body.keyboard-visible .display-container.form-screen-mode {
+        padding-bottom: calc(var(--keyboard-reserved-space) + 10px);
+      }
+
+      .status {
+        top: 10px;
+        right: 12px;
+      }
     }
   </style>
 </head>
@@ -509,27 +783,149 @@ function getDisplayHTML() {
   <div class="display-container">
     <div class="message-text" id="message"></div>
   </div>
+  ${enableBuiltInKeyboard ? `
+  <div class="keyboard-host" id="keyboard-host">
+    <div class="keyboard-shell">
+      <div class="keyboard-grid" id="keyboard"></div>
+    </div>
+  </div>` : ''}
   <div class="status" id="status">
     <span class="dot"></span>
     <span id="statusText">Connecting...</span>
   </div>
 
   <script>
+    const isKioskMode = ${JSON.stringify(enableBuiltInKeyboard)};
     const messageEl = document.getElementById('message');
+    const displayContainer = document.querySelector('.display-container');
     const statusEl = document.getElementById('status');
     const statusText = document.getElementById('statusText');
+    const keyboardHost = isKioskMode ? document.getElementById('keyboard-host') : null;
+    const keyboardEl = isKioskMode ? document.getElementById('keyboard') : null;
+
+    if (isKioskMode) {
+      document.body.classList.add('kiosk-mode');
+    }
 
     let lastText = '';
     let lastUserId = '';
     let updateInterval;
     let autoScrollInterval;
     let isSubmitting = false;
+    let activeInput = null;
     const NEWLINE = String.fromCharCode(10);
+    const keyboardRows = [
+      ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+      ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'],
+      ['J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'],
+      ['S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
+      ['{clear}', '{bksp}', '{close}']
+    ];
+
+    function getKeyboardLabel(key) {
+      if (key === '{bksp}') return 'Backspace';
+      if (key === '{clear}') return 'Clear';
+      if (key === '{close}') return 'Close';
+      return key;
+    }
+
+    function getKeyboardButtonClass(key) {
+      if (key.startsWith('{')) return 'keyboard-key keyboard-key-action';
+      return 'keyboard-key';
+    }
+
+    function renderKeyboard() {
+      if (!isKioskMode || !keyboardEl) {
+        return;
+      }
+
+      keyboardEl.innerHTML = keyboardRows.map((row) => {
+        const rowClass = row.some((key) => key.startsWith('{'))
+          ? 'keyboard-row keyboard-row-actions'
+          : 'keyboard-row';
+        const rowStyle = ' style="grid-template-columns: repeat(' + row.length + ', minmax(0, 1fr));"';
+
+        return '<div class="' + rowClass + '"' + rowStyle + '>' + row.map((key) => (
+          '<button type="button" class="' + getKeyboardButtonClass(key) + '" data-key="' + key + '">' +
+            escapeHtml(getKeyboardLabel(key)) +
+          '</button>'
+        )).join('') + '</div>';
+      }).join('');
+
+      keyboardEl.addEventListener('click', (event) => {
+        const keyButton = event.target.closest('[data-key]');
+
+        if (!keyButton) {
+          return;
+        }
+
+        pressKeyboardKey(keyButton.getAttribute('data-key'));
+      });
+    }
+
+    function showKeyboard(inputEl) {
+      if (!isKioskMode || !keyboardHost) {
+        return;
+      }
+
+      activeInput = inputEl;
+      document.body.classList.add('keyboard-visible');
+      keyboardHost.classList.add('visible');
+      inputEl.focus();
+    }
+
+    function hideKeyboard() {
+      if (!keyboardHost) {
+        return;
+      }
+
+      document.body.classList.remove('keyboard-visible');
+      keyboardHost.classList.remove('visible');
+      activeInput = null;
+    }
+
+    function pressKeyboardKey(key) {
+      if (!activeInput) {
+        return;
+      }
+
+      if (key === '{bksp}') {
+        activeInput.value = activeInput.value.slice(0, -1);
+        return;
+      }
+
+      if (key === '{clear}') {
+        activeInput.value = '';
+        return;
+      }
+
+      if (key === '{close}') {
+        hideKeyboard();
+        return;
+      }
+
+      const normalizedKey = String(key || '').toUpperCase();
+
+      if (!/^[0-9A-Z]$/.test(normalizedKey)) {
+        return;
+      }
+
+      activeInput.value = (activeInput.value + normalizedKey).slice(0, 8);
+    }
 
     function normalizeDisplayText(text) {
       return String(text || 'Waiting...')
         .replaceAll('\\\\n', NEWLINE)
         .replaceAll(String.fromCharCode(13), '');
+    }
+
+    function setScreenMode(mode) {
+      const isFormMode = mode === 'form';
+
+      displayContainer.classList.toggle('form-screen-mode', isFormMode);
+      displayContainer.classList.toggle('board-screen-mode', !isFormMode);
+      messageEl.classList.toggle('form-screen', isFormMode);
+      messageEl.classList.toggle('board-screen', !isFormMode);
     }
 
     function escapeHtml(value) {
@@ -637,6 +1033,7 @@ function getDisplayHTML() {
     }
 
     function renderUserForm(userId, feedback) {
+      setScreenMode('form');
       messageEl.innerHTML =
         buildHeader('Enter User ID', userId ? userId.slice(0, 4) : '') +
         '<div class="user-form-wrap">' +
@@ -644,10 +1041,11 @@ function getDisplayHTML() {
             '<div class="user-form-title">Load Your Stops</div>' +
             '<div class="user-form-help">Enter the first 4 characters of your user ID to fetch your saved stops and routes.</div>' +
             '<form class="user-form" id="userForm">' +
-              '<input class="user-input" id="userIdInput" maxlength="8" placeholder="Example: 952c" value="' + escapeHtml(userId || '') + '" autocomplete="off">' +
+              '<input class="user-input" id="userIdInput" maxlength="8" placeholder="Example: 952C" value="' + escapeHtml(userId || '') + '" autocomplete="off" autocapitalize="characters" spellcheck="false"' + (isKioskMode ? ' readonly inputmode="none"' : '') + '>' +
               '<button class="user-submit" id="userSubmit" type="submit">' + (isSubmitting ? 'Loading...' : 'Load Departures') + '</button>' +
             '</form>' +
             '<div class="form-feedback" id="formFeedback">' + escapeHtml(feedback || '') + '</div>' +
+            (isKioskMode ? '<div class="keyboard-caption">Touch keyboard docked below</div>' : '') +
           '</div>' +
         '</div>';
 
@@ -656,6 +1054,12 @@ function getDisplayHTML() {
       const submitEl = document.getElementById('userSubmit');
 
       submitEl.disabled = isSubmitting;
+
+      if (isKioskMode) {
+        showKeyboard(inputEl);
+        inputEl.addEventListener('focus', () => showKeyboard(inputEl));
+        inputEl.addEventListener('click', () => showKeyboard(inputEl));
+      }
 
       formEl.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -668,6 +1072,7 @@ function getDisplayHTML() {
 
         isSubmitting = true;
         renderUserForm(value, '');
+        hideKeyboard();
 
         try {
           const response = await fetch('/api/user', {
@@ -693,6 +1098,7 @@ function getDisplayHTML() {
     }
 
     function renderEmptyState(text, userLabel) {
+      setScreenMode('form');
       messageEl.innerHTML =
         buildHeader('STIB Waiting Times', userLabel) +
         '<div class="empty-state">' +
@@ -701,6 +1107,8 @@ function getDisplayHTML() {
             '<div class="empty-help">No live matches were found for the saved stops and routes of this user.</div>' +
           '</div>' +
         '</div>';
+
+      hideKeyboard();
     }
 
     function stopAutoScroll() {
@@ -772,12 +1180,14 @@ function getDisplayHTML() {
       }
 
       const stopGroups = groupDeparturesByStop(arrivals);
+      setScreenMode('board');
 
       messageEl.innerHTML =
         buildHeader('STIB Waiting Times', userLabel || selectedUserId.slice(0, 4)) +
         '<div class="stop-groups">' + stopGroups.map(buildStopCard).join('') + '</div>';
 
       messageEl.style.color = data.color || '#FFFFFF';
+      hideKeyboard();
       startAutoScroll();
       lastUserId = selectedUserId;
       lastText = data.text || '';
@@ -809,12 +1219,14 @@ function getDisplayHTML() {
       }
     }
 
+    renderKeyboard();
     updateDisplay();
     updateInterval = setInterval(updateDisplay, 1000);
 
     window.addEventListener('beforeunload', () => {
       clearInterval(updateInterval);
       stopAutoScroll();
+      hideKeyboard();
     });
 
     document.addEventListener('mousemove', () => {
@@ -829,7 +1241,7 @@ async function cleanup() {
   return new Promise((resolve) => {
     if (server) {
       server.close(() => {
-        logger.info('Monitor display server closed');
+        logger.info('Display server closed');
         resolve();
       });
     } else {

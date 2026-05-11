@@ -626,8 +626,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/supabase-display
-ExecStart=/usr/bin/node /home/pi/supabase-display/index.js
+WorkingDirectory=/home/pi/NGUI-Project
+ExecStart=/usr/bin/node /home/pi/NGUI-Project/index.js
 Restart=on-failure
 RestartSec=10
 
@@ -652,7 +652,7 @@ crontab -e
 
 Add:
 ```
-@reboot cd /home/pi/supabase-display && /usr/bin/node index.js >> /tmp/display.log 2>&1
+@reboot cd /home/pi/NGUI-Project && /usr/bin/node index.js >> /tmp/display.log 2>&1
 ```
 
 ---

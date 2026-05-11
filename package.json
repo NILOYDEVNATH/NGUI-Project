@@ -7,7 +7,7 @@
     "start": "node index.js",
     "dev": "node --watch index.js",
     "logs": "tail -f logs/display.log",
-    "setup:service": "sudo cp supabase-display.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable supabase-display"
+    "setup:service": "sudo cp supabase-display.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable supabase-display && sudo systemctl restart supabase-display"
   },
   "keywords": [
     "raspberry-pi",

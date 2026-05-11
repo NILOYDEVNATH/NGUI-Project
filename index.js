@@ -59,6 +59,7 @@ const stopNameCache = new Map();
 
 async function initializeDisplay() {
   logger.info('Initializing display modules...');
+  let initializedCount = 0;
 
   for (const type of CONFIG.displayType) {
     try {
@@ -66,19 +67,37 @@ async function initializeDisplay() {
         displayManager.monitor = require('./displays_monitor.js');
         await displayManager.monitor.init(CONFIG.displayPort, {
           onUserIdSubmit: handleUserSelection,
-          getSelectedUserId: () => selectedUserId
+          getSelectedUserId: () => selectedUserId,
+          mode: 'monitor'
         });
         logger.info('Monitor display initialized');
+        initializedCount += 1;
+      }
+
+      if (type === 'kiosk') {
+        displayManager.monitor = require('./displays_monitor.js');
+        await displayManager.monitor.init(CONFIG.displayPort, {
+          onUserIdSubmit: handleUserSelection,
+          getSelectedUserId: () => selectedUserId,
+          mode: 'kiosk'
+        });
+        logger.info('Kiosk display initialized');
+        initializedCount += 1;
       }
 
       if (type === 'led') {
         displayManager.led = require('./displays_led.js');
         await displayManager.led.init();
         logger.info('LED display initialized');
+        initializedCount += 1;
       }
     } catch (err) {
       logger.error(`Failed to initialize ${type} display:`, err.message);
     }
+  }
+
+  if (initializedCount === 0) {
+    throw new Error('No display modules initialized successfully. Check port availability and display configuration.');
   }
 }
 

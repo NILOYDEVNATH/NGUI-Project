@@ -8,12 +8,12 @@ Wants=network-online.target
 Type=simple
 User=pi
 Group=pi
-WorkingDirectory=/home/pi/supabase-display
+WorkingDirectory=/home/pi/NGUI-Project
 StandardOutput=journal
 StandardError=journal
 
 # Start the service
-ExecStart=/usr/bin/node /home/pi/supabase-display/index.js
+ExecStart=/usr/bin/node /home/pi/NGUI-Project/index.js
 
 # Restart configuration
 Restart=on-failure
