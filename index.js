@@ -148,6 +148,16 @@ function getMinutesUntil(expectedArrivalTime) {
   return Math.max(0, Math.ceil(diffMs / 60000));
 }
 
+function getExpectedArrivalTime(passingTime) {
+  return passingTime.expectedArrivalTime ||
+    passingTime.expectedArrival ||
+    passingTime.arrivalTime ||
+    passingTime.scheduledArrivalTime ||
+    passingTime.expectedDepartureTime ||
+    passingTime.scheduledDepartureTime ||
+    '';
+}
+
 async function fetchUserSelections(userId) {
   const normalizedUserId = normalizeUserId(userId).toLowerCase();
 
@@ -160,7 +170,7 @@ async function fetchUserSelections(userId) {
 
   const { data, error } = await supabase
     .from(USER_TABLE)
-    .select('user_id, source_stop_id, route_short_name')
+    .select('*')
     .order('updated_at', { ascending: false });
 
   if (error) {
@@ -188,7 +198,9 @@ async function fetchUserSelections(userId) {
     selections: rows
     .map((row) => ({
       stopId: String(row.source_stop_id || '').trim(),
-      routeShortName: String(row.route_short_name || '').trim()
+      routeShortName: String(row.route_short_name || '').trim(),
+      eventTitle: String(row.event_title || row.event_name || row.title || row.name || '').trim(),
+      eventLocation: String(row.event_location || row.location || row.destination_name || '').trim()
     }))
     .filter((row) => row.stopId && row.routeShortName)
   };
@@ -285,18 +297,27 @@ function isBlockedDeparture(destination, message) {
   ));
 }
 
-function formatArrivalLabel(expectedArrivalTime) {
+function formatArrivalLabel(expectedArrivalTime, fallbackMinutes = null) {
   const arrival = new Date(expectedArrivalTime);
 
-  if (Number.isNaN(arrival.getTime())) {
-    return '--:--:--';
+  if (!Number.isNaN(arrival.getTime())) {
+    return arrival.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
   }
 
-  return arrival.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
+  if (Number.isFinite(fallbackMinutes)) {
+    const fallbackArrival = new Date(Date.now() + (fallbackMinutes * 60000));
+    return fallbackArrival.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  }
+
+  return '--:--:--';
 }
 
 function extractDeparturesForStop(stopId, payload) {
@@ -307,7 +328,8 @@ function extractDeparturesForStop(stopId, payload) {
     const passingTimes = parseJsonMaybe(result.passingtimes, []);
 
     for (const passingTime of passingTimes) {
-      const minutes = getMinutesUntil(passingTime.expectedArrivalTime);
+      const expectedArrivalTime = getExpectedArrivalTime(passingTime);
+      const minutes = getMinutesUntil(expectedArrivalTime);
       const destination = getDestinationLabel(passingTime.destination);
 
       if (minutes === null) {
@@ -323,7 +345,7 @@ function extractDeparturesForStop(stopId, payload) {
         line: String(result.lineid || passingTime.lineId || '').trim(),
         destination,
         minutes,
-        arrivalLabel: formatArrivalLabel(passingTime.expectedArrivalTime)
+        arrivalLabel: formatArrivalLabel(expectedArrivalTime, minutes)
       });
     }
   }
@@ -346,10 +368,10 @@ async function fetchDeparturesForUser(userId) {
 
   for (const selection of selections) {
     if (!allowedByStop.has(selection.stopId)) {
-      allowedByStop.set(selection.stopId, new Set());
+      allowedByStop.set(selection.stopId, new Map());
     }
 
-    allowedByStop.get(selection.stopId).add(selection.routeShortName);
+    allowedByStop.get(selection.stopId).set(selection.routeShortName, selection);
   }
 
   const stopIds = [...allowedByStop.keys()];
@@ -367,8 +389,14 @@ async function fetchDeparturesForUser(userId) {
     const departures = extractDeparturesForStop(stopId, payloads[index]);
 
     for (const departure of departures) {
-      if (allowedRoutes.has(departure.line)) {
-        matchedDepartures.push(departure);
+      const selection = allowedRoutes.get(departure.line);
+
+      if (selection) {
+        matchedDepartures.push({
+          ...departure,
+          eventTitle: selection.eventTitle,
+          eventLocation: selection.eventLocation
+        });
       }
     }
   }

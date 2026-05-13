@@ -777,6 +777,265 @@ function getDisplayHTML() {
         right: 12px;
       }
     }
+
+    html, body {
+      background: #f7f7f4;
+      color: #050505;
+      font-family: 'Inter', 'Avenir Next', 'Segoe UI', Arial, sans-serif;
+    }
+
+    .display-container.board-screen-mode {
+      place-items: center;
+      overflow: auto;
+      padding: clamp(18px, 4vw, 48px);
+    }
+
+    .message-text.board-screen {
+      width: min(1680px, 100%);
+      height: auto;
+      min-height: 0;
+      max-height: none;
+      display: block;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      overflow: visible;
+      color: #050505;
+    }
+
+    .departure-dashboard {
+      display: grid;
+      grid-template-columns: minmax(620px, 0.95fr) minmax(560px, 1.05fr);
+      align-items: stretch;
+      gap: clamp(24px, 3vw, 44px);
+      width: 100%;
+    }
+
+    .preview-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+      gap: clamp(22px, 4vw, 40px);
+      align-items: stretch;
+      width: 100%;
+      min-height: clamp(430px, 58vh, 620px);
+      padding: clamp(20px, 3.2vw, 32px);
+      border: 3px solid #050505;
+      border-radius: 16px;
+      background: #ffffff;
+    }
+
+    .primary-panel {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .result-title {
+      max-width: 100%;
+      font-size: clamp(2.1rem, 5.2vw, 4rem);
+      font-weight: 900;
+      line-height: 0.98;
+      overflow-wrap: anywhere;
+    }
+
+    .result-location {
+      margin-top: 6px;
+      font-size: clamp(1rem, 2vw, 1.35rem);
+      line-height: 1.2;
+    }
+
+    .leave-label {
+      margin-top: clamp(22px, 4vh, 34px);
+      font-size: clamp(1.4rem, 3.2vw, 2.2rem);
+      line-height: 1;
+    }
+
+    .leave-value {
+      margin-top: 2px;
+      font-size: clamp(3rem, 8vw, 5.6rem);
+      font-weight: 950;
+      line-height: 0.95;
+    }
+
+    .arrival-copy {
+      max-width: 100%;
+      margin-top: clamp(20px, 3.8vh, 32px);
+      font-size: clamp(1.02rem, 2.2vw, 1.55rem);
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+
+    .arrival-copy strong {
+      font-weight: 900;
+    }
+
+    .skip-button {
+      width: min(330px, 92%);
+      margin-top: clamp(28px, 5vh, 46px);
+      min-height: 60px;
+      border: 0;
+      border-radius: 14px;
+      background: #dcffb0;
+      color: #050505;
+      font-size: clamp(1.1rem, 2.4vw, 1.55rem);
+      font-weight: 500;
+      box-shadow: 4px 7px 0 #d4d4d4;
+      cursor: pointer;
+    }
+
+    .schedule-panel {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 16px;
+      min-width: 0;
+      padding: clamp(14px, 2vw, 20px);
+      border-radius: 16px;
+      background: #d6d6d6;
+    }
+
+    .schedule-dates,
+    .schedule-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .schedule-date {
+      text-align: center;
+      font-size: clamp(1rem, 1.9vw, 1.35rem);
+      font-weight: 900;
+    }
+
+    .schedule-grid {
+      grid-template-rows: repeat(3, minmax(86px, 1fr));
+    }
+
+    .schedule-slot {
+      display: grid;
+      place-items: center;
+      min-height: 86px;
+      padding: 10px;
+      border-radius: 14px;
+      background: #ffffff;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .schedule-slot.is-active {
+      background: #dcffb0;
+    }
+
+    .slot-route {
+      font-size: clamp(0.86rem, 1.35vw, 1.02rem);
+      font-weight: 800;
+      line-height: 1.05;
+    }
+
+    .slot-destination {
+      margin-top: 2px;
+      font-size: clamp(0.72rem, 1.1vw, 0.88rem);
+      line-height: 1.12;
+    }
+
+    .slot-time {
+      margin-top: 8px;
+      font-size: clamp(1.18rem, 2vw, 1.58rem);
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .urgent-card {
+      width: 100%;
+      min-height: clamp(430px, 58vh, 620px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(28px, 5vw, 58px);
+      border: 3px solid #050505;
+      border-radius: 16px;
+      background: #ff904d;
+      text-align: center;
+      color: #050505;
+    }
+
+    .urgent-card .result-title {
+      font-size: clamp(3.2rem, 6.2vw, 8.4rem);
+    }
+
+    .urgent-card .leave-label {
+      margin-top: clamp(24px, 4vh, 42px);
+      font-size: clamp(2.1rem, 3.8vw, 5rem);
+    }
+
+    .urgent-card .leave-value {
+      font-size: clamp(6rem, 10vw, 13rem);
+    }
+
+    .urgent-card .arrival-copy {
+      font-size: clamp(1.25rem, 2.1vw, 2.8rem);
+    }
+
+    @media (max-width: 1280px) {
+      .message-text.board-screen {
+        width: min(980px, 100%);
+      }
+
+      .departure-dashboard {
+        grid-template-columns: 1fr;
+      }
+
+      .preview-card,
+      .urgent-card {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .preview-card {
+        grid-template-columns: 1fr;
+        width: min(640px, 100%);
+      }
+
+      .schedule-grid {
+        grid-template-rows: repeat(3, minmax(78px, 1fr));
+      }
+    }
+
+    @media (max-width: 560px) {
+      .display-container.board-screen-mode {
+        padding: 12px;
+      }
+
+      .preview-card,
+      .urgent-card {
+        border-width: 2px;
+      }
+
+      .preview-card {
+        padding: 16px;
+      }
+
+      .schedule-panel {
+        padding: 12px;
+        gap: 12px;
+      }
+
+      .schedule-dates,
+      .schedule-grid {
+        gap: 10px;
+      }
+
+      .skip-button {
+        min-height: 52px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -813,6 +1072,7 @@ function getDisplayHTML() {
     let autoScrollInterval;
     let isSubmitting = false;
     let activeInput = null;
+    let skippedDepartureKeys = new Set();
     const NEWLINE = String.fromCharCode(10);
     const keyboardRows = [
       ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
@@ -958,6 +1218,7 @@ function getDisplayHTML() {
 
       if (parts.length >= 3) {
         return {
+          line: parts[0],
           route: parts[0],
           destination: parts[1],
           minutes: parts.slice(2).join(' ').trim()
@@ -971,54 +1232,134 @@ function getDisplayHTML() {
       };
     }
 
-    function getRouteClass(route) {
-      const routeNumber = Number.parseInt(String(route || '').replace(/[^0-9]/g, ''), 10);
-      return Number.isNaN(routeNumber) || routeNumber % 2 === 1 ? 'route-odd' : 'route-even';
+    function getDepartureLine(item) {
+      return String(item.line || item.route || '').trim();
     }
 
-    function buildArrivalRow(item) {
-      const minuteValue = String(item.minutes ?? '').replace(/\s*min$/i, '').trim() || '--';
+    function getMinuteValue(item) {
+      return String(item.minutes ?? '').replace(/\s*min$/i, '').trim() || '--';
+    }
 
-      return '<div class="arrival-row">' +
-        '<div class="route-pill ' + getRouteClass(item.route) + '">' + escapeHtml(item.route || '--') + '</div>' +
-        '<div class="arrival-main">' +
-          '<div class="destination">' + escapeHtml(item.destination) + '</div>' +
-          '<div class="arrival-time">Arrival time: ' + escapeHtml(item.arrivalLabel || '--:--:--') + '</div>' +
-        '</div>' +
-        '<div class="minutes">' +
-          '<span class="minutes-label">In min</span>' +
-          '<span><span class="minutes-value">' + escapeHtml(minuteValue) + '</span> <span class="minutes-unit">MIN</span></span>' +
+    function getTrainTitle(item) {
+      const line = getDepartureLine(item);
+      return line ? 'Metro ' + line : 'Metro';
+    }
+
+    function getEventTitle(item) {
+      return String(item.eventTitle || item.title || 'Photonics Class').trim() || 'Photonics Class';
+    }
+
+    function getEventLocation(item) {
+      return String(item.eventLocation || item.location || 'VUB University').trim() || 'VUB University';
+    }
+
+    function getArrivalHour(item) {
+      const label = String(item.arrivalLabel || '').trim();
+      const match = label.match(/(\d{1,2}:\d{2})/);
+
+      if (match) {
+        return match[1];
+      }
+
+      const minutes = Number.parseInt(getMinuteValue(item), 10);
+
+      if (!Number.isNaN(minutes)) {
+        const fallbackArrival = new Date(Date.now() + (minutes * 60000));
+        return fallbackArrival.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      return '--:--';
+    }
+
+    function getDepartureKey(item) {
+      return [
+        getDepartureLine(item),
+        item.destination || '',
+        item.stopId || item.stopLabel || '',
+        item.arrivalLabel || '',
+        item.minutes || ''
+      ].join('|');
+    }
+
+    function getDayLabel(offsetDays) {
+      const date = new Date();
+      date.setDate(date.getDate() + offsetDays);
+      return date.toLocaleDateString([], {
+        day: 'numeric',
+        month: 'short'
+      });
+    }
+
+    function buildScheduleSlot(item, isActive) {
+      if (!item) {
+        return '<div class="schedule-slot" aria-hidden="true"></div>';
+      }
+
+      return '<div class="schedule-slot' + (isActive ? ' is-active' : '') + '">' +
+        '<div>' +
+          '<div class="slot-route">' + escapeHtml(getEventTitle(item)) + '</div>' +
+          '<div class="slot-destination">' + escapeHtml(getEventLocation(item)) + '</div>' +
+          '<div class="slot-time">' + escapeHtml(getArrivalHour(item)) + 'h</div>' +
         '</div>' +
       '</div>';
     }
 
-    function groupDeparturesByStop(departures) {
-      const groups = new Map();
+    function buildSchedulePanel(arrivals) {
+      const slots = arrivals.slice(0, 3);
 
-      for (const departure of departures) {
-        const stopKey = departure.stopId || departure.stopLabel || 'Unknown stop';
-
-        if (!groups.has(stopKey)) {
-          groups.set(stopKey, {
-            title: departure.stopLabel || stopKey,
-            items: []
-          });
-        }
-
-        groups.get(stopKey).items.push(departure);
+      while (slots.length < 3) {
+        slots.push(null);
       }
 
-      return [...groups.values()];
+      const gridSlots = slots
+        .map((item, index) => buildScheduleSlot(item, index === 0) + buildScheduleSlot(null, false))
+        .join('');
+
+      return '<aside class="schedule-panel">' +
+        '<div class="schedule-dates">' +
+          '<div class="schedule-date">' + escapeHtml(getDayLabel(0)) + '</div>' +
+          '<div class="schedule-date">' + escapeHtml(getDayLabel(1)) + '</div>' +
+        '</div>' +
+        '<div class="schedule-grid">' + gridSlots + '</div>' +
+      '</aside>';
     }
 
-    function buildStopCard(group) {
-      return '<section class="stop-card">' +
-        '<div class="stop-card-header">' +
-          '<div class="stop-card-title">' + escapeHtml(group.title) + ' <span class="stop-card-arrow">→</span></div>' +
-          '<div class="stop-card-dots">⋮</div>' +
-        '</div>' +
-        group.items.map(buildArrivalRow).join('') +
-      '</section>';
+    function buildArrivalCopy(item) {
+      const line = getDepartureLine(item);
+      const metroLabel = line ? 'Metro ' + line : 'Metro';
+
+      return '<div class="arrival-copy"><strong>' + escapeHtml(metroLabel) + '</strong> arrives at the station at: <strong>' +
+        escapeHtml(getArrivalHour(item)) + '</strong></div>';
+    }
+
+    function buildDepartureDashboard(arrivals) {
+      const primary = arrivals[0];
+      const minutes = getMinuteValue(primary);
+      const title = getEventTitle(primary);
+      const location = getEventLocation(primary);
+
+      return '<div class="departure-dashboard">' +
+        '<section class="preview-card">' +
+          '<div class="primary-panel">' +
+            '<h1 class="result-title">' + escapeHtml(title) + '</h1>' +
+            '<div class="result-location">Location: ' + escapeHtml(location) + '</div>' +
+            '<div class="leave-label">Leave In:</div>' +
+            '<div class="leave-value">' + escapeHtml(minutes) + ' Min</div>' +
+            buildArrivalCopy(primary) +
+            '<button class="skip-button" type="button">Skip Event</button>' +
+          '</div>' +
+          buildSchedulePanel(arrivals) +
+        '</section>' +
+        '<section class="urgent-card">' +
+          '<h1 class="result-title">' + escapeHtml(title) + '</h1>' +
+          '<div class="leave-label">Leave In:</div>' +
+          '<div class="leave-value">' + escapeHtml(minutes) + ' Min</div>' +
+          buildArrivalCopy(primary) +
+        '</section>' +
+      '</div>';
     }
 
     function buildHeader(subtitle, userLabel) {
@@ -1088,6 +1429,7 @@ function getDisplayHTML() {
 
           lastUserId = value;
           lastText = '';
+          skippedDepartureKeys = new Set();
           await updateDisplay();
         } catch (error) {
           renderUserForm(value, error.message || 'Unable to load user data');
@@ -1179,16 +1521,29 @@ function getDisplayHTML() {
         return;
       }
 
-      const stopGroups = groupDeparturesByStop(arrivals);
+      let visibleArrivals = arrivals.filter((arrival) => !skippedDepartureKeys.has(getDepartureKey(arrival)));
+
+      if (!visibleArrivals.length) {
+        skippedDepartureKeys = new Set();
+        visibleArrivals = arrivals;
+      }
+
       setScreenMode('board');
 
-      messageEl.innerHTML =
-        buildHeader('STIB Waiting Times', userLabel || selectedUserId.slice(0, 4)) +
-        '<div class="stop-groups">' + stopGroups.map(buildStopCard).join('') + '</div>';
+      messageEl.innerHTML = buildDepartureDashboard(visibleArrivals);
 
-      messageEl.style.color = data.color || '#FFFFFF';
+      messageEl.style.color = '';
       hideKeyboard();
-      startAutoScroll();
+      stopAutoScroll();
+      const skipButton = messageEl.querySelector('.skip-button');
+
+      if (skipButton) {
+        skipButton.addEventListener('click', () => {
+          skippedDepartureKeys.add(getDepartureKey(visibleArrivals[0]));
+          renderMessage(data);
+        });
+      }
+
       lastUserId = selectedUserId;
       lastText = data.text || '';
     }
