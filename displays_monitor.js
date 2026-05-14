@@ -786,15 +786,15 @@ function getDisplayHTML() {
 
     .display-container.board-screen-mode {
       place-items: center;
-      overflow: auto;
-      padding: clamp(18px, 4vw, 48px);
+      overflow: hidden;
+      padding: clamp(12px, 3vw, 36px);
     }
 
     .message-text.board-screen {
-      width: min(1680px, 100%);
-      height: auto;
+      width: min(1760px, 100%);
+      height: min(760px, calc(100vh - clamp(24px, 6vw, 72px)));
       min-height: 0;
-      max-height: none;
+      max-height: calc(100vh - clamp(24px, 6vw, 72px));
       display: block;
       padding: 0;
       border: 0;
@@ -807,19 +807,23 @@ function getDisplayHTML() {
 
     .departure-dashboard {
       display: grid;
-      grid-template-columns: minmax(620px, 0.95fr) minmax(560px, 1.05fr);
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
       align-items: stretch;
       gap: clamp(24px, 3vw, 44px);
       width: 100%;
+      height: 100%;
+      min-height: 0;
     }
 
     .preview-card {
       display: grid;
-      grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+      grid-template-columns: minmax(0, 1.05fr) minmax(230px, 0.95fr);
       gap: clamp(22px, 4vw, 40px);
       align-items: stretch;
       width: 100%;
-      min-height: clamp(430px, 58vh, 620px);
+      height: 100%;
+      min-height: 0;
+      max-height: none;
       padding: clamp(20px, 3.2vw, 32px);
       border: 3px solid #050505;
       border-radius: 16px;
@@ -829,16 +833,18 @@ function getDisplayHTML() {
     .primary-panel {
       display: flex;
       min-width: 0;
+      min-height: 0;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
       padding: 8px 0;
+      overflow: hidden;
     }
 
     .result-title {
       max-width: 100%;
-      font-size: clamp(2.1rem, 5.2vw, 4rem);
+      font-size: clamp(1.8rem, 4.2vw, 3.6rem);
       font-weight: 900;
       line-height: 0.98;
       overflow-wrap: anywhere;
@@ -846,27 +852,29 @@ function getDisplayHTML() {
 
     .result-location {
       margin-top: 6px;
-      font-size: clamp(1rem, 2vw, 1.35rem);
-      line-height: 1.2;
+      max-width: min(430px, 100%);
+      font-size: clamp(0.9rem, 1.45vw, 1.18rem);
+      line-height: 1.12;
+      overflow-wrap: anywhere;
     }
 
     .leave-label {
-      margin-top: clamp(22px, 4vh, 34px);
-      font-size: clamp(1.4rem, 3.2vw, 2.2rem);
+      margin-top: clamp(10px, 2.4vh, 24px);
+      font-size: clamp(1.05rem, 2.25vw, 1.75rem);
       line-height: 1;
     }
 
     .leave-value {
       margin-top: 2px;
-      font-size: clamp(3rem, 8vw, 5.6rem);
+      font-size: clamp(2.6rem, 5.7vw, 4.6rem);
       font-weight: 950;
       line-height: 0.95;
     }
 
     .arrival-copy {
       max-width: 100%;
-      margin-top: clamp(20px, 3.8vh, 32px);
-      font-size: clamp(1.02rem, 2.2vw, 1.55rem);
+      margin-top: clamp(14px, 2.8vh, 26px);
+      font-size: clamp(0.95rem, 1.65vw, 1.35rem);
       line-height: 1.15;
       overflow-wrap: anywhere;
     }
@@ -877,13 +885,13 @@ function getDisplayHTML() {
 
     .skip-button {
       width: min(330px, 92%);
-      margin-top: clamp(28px, 5vh, 46px);
-      min-height: 60px;
+      margin-top: clamp(18px, 3.2vh, 34px);
+      min-height: 54px;
       border: 0;
       border-radius: 14px;
       background: #dcffb0;
       color: #050505;
-      font-size: clamp(1.1rem, 2.4vw, 1.55rem);
+      font-size: clamp(1rem, 1.9vw, 1.35rem);
       font-weight: 500;
       box-shadow: 4px 7px 0 #d4d4d4;
       cursor: pointer;
@@ -894,6 +902,7 @@ function getDisplayHTML() {
       grid-template-rows: auto minmax(0, 1fr);
       gap: 16px;
       min-width: 0;
+      min-height: 0;
       padding: clamp(14px, 2vw, 20px);
       border-radius: 16px;
       background: #d6d6d6;
@@ -920,7 +929,8 @@ function getDisplayHTML() {
       display: grid;
       place-items: center;
       min-height: 86px;
-      padding: 10px;
+      min-width: 0;
+      padding: 8px;
       border-radius: 14px;
       background: #ffffff;
       text-align: center;
@@ -932,27 +942,31 @@ function getDisplayHTML() {
     }
 
     .slot-route {
-      font-size: clamp(0.86rem, 1.35vw, 1.02rem);
+      font-size: clamp(0.76rem, 1.05vw, 0.95rem);
       font-weight: 800;
       line-height: 1.05;
+      overflow-wrap: anywhere;
     }
 
     .slot-destination {
       margin-top: 2px;
-      font-size: clamp(0.72rem, 1.1vw, 0.88rem);
-      line-height: 1.12;
+      font-size: clamp(0.62rem, 0.82vw, 0.76rem);
+      line-height: 1.05;
+      overflow-wrap: anywhere;
     }
 
     .slot-time {
-      margin-top: 8px;
-      font-size: clamp(1.18rem, 2vw, 1.58rem);
+      margin-top: 6px;
+      font-size: clamp(1rem, 1.55vw, 1.32rem);
       font-weight: 950;
       line-height: 1;
     }
 
     .urgent-card {
       width: 100%;
-      min-height: clamp(430px, 58vh, 620px);
+      height: 100%;
+      min-height: 0;
+      max-height: none;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -966,25 +980,46 @@ function getDisplayHTML() {
     }
 
     .urgent-card .result-title {
-      font-size: clamp(3.2rem, 6.2vw, 8.4rem);
+      font-size: clamp(2.8rem, 5vw, 6.8rem);
     }
 
     .urgent-card .leave-label {
-      margin-top: clamp(24px, 4vh, 42px);
-      font-size: clamp(2.1rem, 3.8vw, 5rem);
+      margin-top: clamp(18px, 3vh, 34px);
+      font-size: clamp(1.9rem, 3.2vw, 4.2rem);
     }
 
     .urgent-card .leave-value {
-      font-size: clamp(6rem, 10vw, 13rem);
+      font-size: clamp(4.6rem, 8.2vw, 10rem);
     }
 
     .urgent-card .arrival-copy {
-      font-size: clamp(1.25rem, 2.1vw, 2.8rem);
+      font-size: clamp(1.1rem, 1.75vw, 2.25rem);
     }
 
     @media (max-width: 1280px) {
       .message-text.board-screen {
-        width: min(980px, 100%);
+        width: min(1180px, 100%);
+      }
+
+      .departure-dashboard {
+        gap: 22px;
+      }
+
+      .preview-card,
+      .urgent-card {
+        min-height: 0;
+        max-height: none;
+      }
+
+      .preview-card {
+        grid-template-columns: minmax(0, 1fr) minmax(210px, 0.82fr);
+        gap: 20px;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .message-text.board-screen {
+        width: min(640px, 100%);
       }
 
       .departure-dashboard {
@@ -993,11 +1028,10 @@ function getDisplayHTML() {
 
       .preview-card,
       .urgent-card {
+        height: auto;
         min-height: auto;
       }
-    }
 
-    @media (max-width: 820px) {
       .preview-card {
         grid-template-columns: 1fr;
         width: min(640px, 100%);
@@ -1242,23 +1276,42 @@ function getDisplayHTML() {
 
     function getTrainTitle(item) {
       const line = getDepartureLine(item);
-      return line ? 'Metro ' + line : 'Metro';
+      return String(item.transportName || item.transport_name || item.mode || (line ? 'Line ' + line : 'Transport')).trim();
     }
 
     function getEventTitle(item) {
-      return String(item.eventTitle || item.title || 'Photonics Class').trim() || 'Photonics Class';
+      return String(item.eventTitle || item.title || 'Calendar Event').trim() || 'Calendar Event';
     }
 
     function getEventLocation(item) {
-      return String(item.eventLocation || item.location || 'VUB University').trim() || 'VUB University';
+      return String(item.eventLocation || item.location || item.stopLabel || 'Registered place').trim() || 'Registered place';
     }
 
-    function getArrivalHour(item) {
-      const label = String(item.arrivalLabel || '').trim();
+    function getTimeLabelFromValue(value) {
+      const label = String(value || '').trim();
       const match = label.match(/(\d{1,2}:\d{2})/);
 
       if (match) {
         return match[1];
+      }
+
+      const date = new Date(label);
+
+      if (!Number.isNaN(date.getTime())) {
+        return date.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      return '';
+    }
+
+    function getArrivalHour(item) {
+      const label = getTimeLabelFromValue(item.arrivalLabel);
+
+      if (label) {
+        return label;
       }
 
       const minutes = Number.parseInt(getMinuteValue(item), 10);
@@ -1272,6 +1325,10 @@ function getDisplayHTML() {
       }
 
       return '--:--';
+    }
+
+    function getEventHour(item) {
+      return getTimeLabelFromValue(item.eventStartTime || item.startTime || item.startsAt) || getArrivalHour(item);
     }
 
     function getDepartureKey(item) {
@@ -1302,7 +1359,7 @@ function getDisplayHTML() {
         '<div>' +
           '<div class="slot-route">' + escapeHtml(getEventTitle(item)) + '</div>' +
           '<div class="slot-destination">' + escapeHtml(getEventLocation(item)) + '</div>' +
-          '<div class="slot-time">' + escapeHtml(getArrivalHour(item)) + 'h</div>' +
+          '<div class="slot-time">' + escapeHtml(getEventHour(item)) + 'h</div>' +
         '</div>' +
       '</div>';
     }
@@ -1328,10 +1385,11 @@ function getDisplayHTML() {
     }
 
     function buildArrivalCopy(item) {
-      const line = getDepartureLine(item);
-      const metroLabel = line ? 'Metro ' + line : 'Metro';
+      const transportLabel = getTrainTitle(item);
+      const destination = String(item.destination || '').trim();
+      const destinationCopy = destination ? ' to ' + escapeHtml(destination) : '';
 
-      return '<div class="arrival-copy"><strong>' + escapeHtml(metroLabel) + '</strong> arrives at the station at: <strong>' +
+      return '<div class="arrival-copy"><strong>' + escapeHtml(transportLabel) + destinationCopy + '</strong> arrives at the station at: <strong>' +
         escapeHtml(getArrivalHour(item)) + '</strong></div>';
     }
 

@@ -8,6 +8,14 @@ require('dotenv').config();
 const CONFIG = {
   supabaseUrl: process.env.SUPABASE_URL,
   supabaseKey: process.env.SUPABASE_ANON_KEY,
+  supabaseDbKey: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY,
+  edgeFunctionKey: process.env.EDGE_FUNCTION_API_KEY ||
+    process.env.SUPABASE_FUNCTION_KEY ||
+    process.env.SB_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_ANON_KEY,
+  routeApiUrl: process.env.ROUTE_API_URL,
+  calendarSyncUrl: process.env.SYNC_GOOGLE_CALENDAR_URL,
+  syncCalendarOnUserSelect: String(process.env.SYNC_CALENDAR_ON_USER_SELECT || '').toLowerCase() === 'true',
   displayType: (process.env.DISPLAY_TYPE || 'monitor').split(',').map((type) => type.trim()),
   displayPort: parseInt(process.env.DISPLAY_PORT, 10) || 8080,
   logFile: process.env.LOG_FILE || 'logs/display.log',
@@ -17,6 +25,7 @@ const CONFIG = {
 const STIB_API_URL = 'https://api-management-discovery-production.azure-api.net/api/datasets/stibmivb/rt/WaitingTimes';
 const STIB_STOP_DETAILS_URL = 'https://api-management-discovery-production.azure-api.net/api/datasets/stibmivb/static/StopDetails';
 const USER_TABLE = 'user';
+const USER_PLACE_TAGS_TABLE = 'user_place_tags';
 const POLL_INTERVAL_MS = 20_000;
 const MAX_DISPLAYED_DEPARTURES = 3;
 
@@ -158,6 +167,484 @@ function getExpectedArrivalTime(passingTime) {
     '';
 }
 
+function getEdgeFunctionUrl(functionName, configuredUrl) {
+  if (configuredUrl) {
+    return configuredUrl;
+  }
+
+  if (!CONFIG.supabaseUrl) {
+    return '';
+  }
+
+  return `${CONFIG.supabaseUrl.replace(/\/$/, '')}/functions/v1/${functionName}`;
+}
+
+function getFirstValue(row, keys, fallback = '') {
+  for (const key of keys) {
+    const value = row?.[key];
+
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      return value;
+    }
+  }
+
+  return fallback;
+}
+
+function normalizeRouteName(value) {
+  return String(value || '').trim();
+}
+
+function getNumberValue(row, keys) {
+  const value = getFirstValue(row, keys, '');
+  const number = Number.parseFloat(value);
+
+  return Number.isFinite(number) ? number : null;
+}
+
+function getBooleanValue(value) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  return ['true', '1', 'yes'].includes(String(value || '').trim().toLowerCase());
+}
+
+function normalizeSelectionRow(row) {
+  const stopId = getFirstValue(row, [
+    'source_stop_id',
+    'stop_id',
+    'stib_stop_id',
+    'station_id',
+    'place_stop_id',
+    'registered_stop_id',
+    'nearest_stop_id',
+    'pointid'
+  ]);
+  const routeShortName = getFirstValue(row, [
+    'route_short_name',
+    'route_name',
+    'line',
+    'line_id',
+    'lineid',
+    'route',
+    'transport_name',
+    'transport_line'
+  ]);
+  const eventTitle = getFirstValue(row, [
+    'event_title',
+    'event_name',
+    'calendar_event_title',
+    'calendar_title',
+    'title',
+    'name',
+    'tag',
+    'place_tag'
+  ]);
+  const eventLocation = getFirstValue(row, [
+    'event_location',
+    'calendar_location',
+    'location',
+    'place_name',
+    'destination_name',
+    'address',
+    'registered_place'
+  ]);
+  const eventStartTime = getFirstValue(row, [
+    'event_start_time',
+    'start_time',
+    'starts_at',
+    'calendar_start',
+    'start',
+    'event_time'
+  ]);
+  const eventEndTime = getFirstValue(row, [
+    'event_end_time',
+    'end_time',
+    'ends_at',
+    'calendar_end',
+    'end'
+  ]);
+  const calendarEventId = getFirstValue(row, [
+    'calendar_event_id',
+    'google_event_id',
+    'event_id',
+    'id'
+  ]);
+  const originLat = getNumberValue(row, ['originLat', 'origin_lat', 'source_latitude', 'source_lat']);
+  const originLng = getNumberValue(row, ['originLng', 'origin_lng', 'source_longitude', 'source_lng']);
+  const destLat = getNumberValue(row, ['destLat', 'dest_lat', 'destination_latitude', 'destination_lat', 'latitude']);
+  const destLng = getNumberValue(row, ['destLng', 'dest_lng', 'destination_longitude', 'destination_lng', 'longitude']);
+
+  return {
+    userId: String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '').trim(),
+    stopId: String(stopId || '').trim(),
+    routeShortName: normalizeRouteName(routeShortName),
+    eventTitle: String(eventTitle || '').trim(),
+    eventLocation: String(eventLocation || '').trim(),
+    eventStartTime: String(eventStartTime || '').trim(),
+    eventEndTime: String(eventEndTime || '').trim(),
+    calendarEventId: String(calendarEventId || '').trim(),
+    originLat,
+    originLng,
+    destLat,
+    destLng,
+    tagKey: String(row?.tag_key || '').trim(),
+    tagName: String(row?.tag_name || '').trim(),
+    isRequired: getBooleanValue(row?.is_required),
+    sortOrder: Number.parseInt(row?.sort_order, 10) || 0
+  };
+}
+
+function hasRouteCoordinates(selection) {
+  return Number.isFinite(selection.originLat) &&
+    Number.isFinite(selection.originLng) &&
+    Number.isFinite(selection.destLat) &&
+    Number.isFinite(selection.destLng);
+}
+
+function buildPlaceTagSelections(rows, resolvedUserId) {
+  const userRows = rows
+    .filter((row) => String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '').trim() === resolvedUserId)
+    .map(normalizeSelectionRow)
+    .sort((left, right) => left.sortOrder - right.sortOrder);
+
+  const origin = userRows.find((row) => row.isRequired && Number.isFinite(row.destLat) && Number.isFinite(row.destLng)) ||
+    userRows.find((row) => row.tagKey.toLowerCase() === 'home' && Number.isFinite(row.destLat) && Number.isFinite(row.destLng)) ||
+    userRows.find((row) => Number.isFinite(row.destLat) && Number.isFinite(row.destLng));
+
+  if (!origin) {
+    return [];
+  }
+
+  const destinations = userRows.filter((row) =>
+    row !== origin &&
+    !row.isRequired &&
+    Number.isFinite(row.destLat) &&
+    Number.isFinite(row.destLng)
+  );
+
+  return destinations.map((destination) => ({
+    ...destination,
+    originLat: origin.destLat,
+    originLng: origin.destLng,
+    destLat: destination.destLat,
+    destLng: destination.destLng,
+    eventTitle: destination.eventTitle || destination.tagName || destination.tagKey || 'Calendar Event',
+    eventLocation: destination.eventLocation || destination.tagName || destination.tagKey || destination.calendarEventId,
+    originLabel: origin.eventTitle || origin.tagName || origin.tagKey || 'Origin'
+  }));
+}
+
+function isUpcomingSelection(selection) {
+  if (!selection.eventEndTime && !selection.eventStartTime) {
+    return true;
+  }
+
+  const endTime = new Date(selection.eventEndTime || selection.eventStartTime);
+
+  if (Number.isNaN(endTime.getTime())) {
+    return true;
+  }
+
+  return endTime.getTime() >= Date.now();
+}
+
+async function maybeSyncCalendar(userId) {
+  if (!CONFIG.syncCalendarOnUserSelect) {
+    return;
+  }
+
+  const syncUrl = getEdgeFunctionUrl('sync-google-calendar', CONFIG.calendarSyncUrl);
+
+  if (!syncUrl || !CONFIG.edgeFunctionKey) {
+    logger.warn('Calendar sync skipped because sync URL or Edge Function key is missing');
+    return;
+  }
+
+  const response = await fetch(syncUrl, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      apikey: CONFIG.edgeFunctionKey,
+      Authorization: `Bearer ${CONFIG.edgeFunctionKey}`
+    },
+    body: JSON.stringify({ userId })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    logger.warn('Calendar sync failed', `${response.status} ${errorText.slice(0, 200)}`);
+  }
+}
+
+async function fetchRowsByUserPrefix(tableName, normalizedUserId) {
+  let query = supabase
+    .from(tableName)
+    .select('*');
+
+  let { data, error } = await query.order('updated_at', { ascending: false });
+
+  if (error && String(error.message || '').toLowerCase().includes('updated_at')) {
+    ({ data, error } = await supabase
+      .from(tableName)
+      .select('*'));
+  }
+
+  if (error) {
+    logger.warn(`Unable to read ${tableName}`, error.message);
+    return [];
+  }
+
+  return (data || []).filter((row) =>
+    String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '')
+      .toLowerCase()
+      .startsWith(normalizedUserId)
+  );
+}
+
+function normalizeRouteApiResult(payload, baseSelection) {
+  const result = payload?.result || payload?.data || payload?.route || payload?.routes?.[0] || payload;
+
+  if (!result || typeof result !== 'object') {
+    return baseSelection;
+  }
+
+  const directDeparture = normalizeRouteApiDeparture(payload, baseSelection);
+
+  return {
+    ...baseSelection,
+    ...directDeparture,
+    stopId: baseSelection.stopId || String(getFirstValue(result, [
+      'source_stop_id',
+      'stop_id',
+      'stib_stop_id',
+      'station_id',
+      'registered_stop_id',
+      'nearest_stop_id',
+      'pointid'
+    ]) || '').trim(),
+    routeShortName: baseSelection.routeShortName || normalizeRouteName(getFirstValue(result, [
+      'route_short_name',
+      'route_name',
+      'line',
+      'line_id',
+      'lineid',
+      'route',
+      'transport_name',
+      'transport_line'
+    ])),
+    eventTitle: baseSelection.eventTitle || String(getFirstValue(result, [
+      'event_title',
+      'event_name',
+      'title',
+      'name'
+    ]) || '').trim(),
+    eventLocation: baseSelection.eventLocation || String(getFirstValue(result, [
+      'event_location',
+      'location',
+      'place_name',
+      'destination_name',
+      'address'
+    ]) || '').trim()
+  };
+}
+
+function getRouteSeconds(route) {
+  const durationSeconds = Number.parseInt(route?.durationSeconds ?? route?.duration_seconds, 10);
+
+  if (Number.isFinite(durationSeconds)) {
+    return durationSeconds;
+  }
+
+  const durationMatch = String(route?.duration || '').match(/(\d+)s/);
+  return durationMatch ? Number.parseInt(durationMatch[1], 10) : null;
+}
+
+function getMinutesFromSeconds(seconds) {
+  return Number.isFinite(seconds) ? Math.max(0, Math.ceil(seconds / 60)) : null;
+}
+
+function pickBestRouteApiRoute(payload) {
+  const routes = Array.isArray(payload?.routes) ? payload.routes : [];
+
+  if (!routes.length) {
+    return payload;
+  }
+
+  const transitRoutes = routes.filter((route) => route.isTransitRoute || (route.lineSummaries || []).length);
+  const candidates = transitRoutes.length ? transitRoutes : routes;
+
+  return candidates
+    .slice()
+    .sort((left, right) => (getRouteSeconds(left) || Infinity) - (getRouteSeconds(right) || Infinity))[0];
+}
+
+function getFirstTransitSummary(route) {
+  const lineSummaries = Array.isArray(route?.lineSummaries) ? route.lineSummaries : [];
+
+  if (lineSummaries.length) {
+    return lineSummaries[0];
+  }
+
+  const transitStep = (route?.steps || []).find((step) => step?.transitDetails);
+  const details = transitStep?.transitDetails;
+
+  if (!details) {
+    return null;
+  }
+
+  return {
+    vehicleType: details.transitLine?.vehicleType || route.primaryTransitVehicle || '',
+    lineName: details.transitLine?.nameShort || details.transitLine?.name || '',
+    headsign: details.headsign || '',
+    departureTime: details.departureTime || details.stopDetails?.departureTime || '',
+    arrivalTime: details.arrivalTime || details.stopDetails?.arrivalTime || '',
+    departureStop: details.departureStop?.name || details.stopDetails?.departureStop?.name || ''
+  };
+}
+
+function normalizeVehicleLabel(summary, route) {
+  const vehicleType = String(summary?.vehicleType || route?.primaryTransitVehicle || 'Transport')
+    .toLowerCase()
+    .replace(/^\w/, (letter) => letter.toUpperCase());
+  const lineName = String(summary?.lineName || '').trim();
+
+  return lineName ? `${vehicleType} ${lineName}` : vehicleType;
+}
+
+function normalizeRouteApiDeparture(payload, baseSelection) {
+  const route = pickBestRouteApiRoute(payload);
+
+  if (!route || typeof route !== 'object') {
+    return {};
+  }
+
+  const summary = getFirstTransitSummary(route);
+  const departureTime = summary?.departureTime || route.departureTime || '';
+  const routeSeconds = getRouteSeconds(route);
+  const departureMinutes = departureTime ? getMinutesUntil(departureTime) : null;
+  const minutes = departureMinutes !== null ? departureMinutes : getMinutesFromSeconds(routeSeconds);
+  const arrivalLabel = departureTime
+    ? formatArrivalLabel(departureTime, minutes)
+    : formatArrivalLabel('', minutes);
+
+  if (minutes === null) {
+    return {};
+  }
+
+  return {
+    directRoute: true,
+    line: String(summary?.lineName || '').trim(),
+    routeShortName: String(summary?.lineName || '').trim(),
+    transportName: normalizeVehicleLabel(summary, route),
+    destination: String(summary?.headsign || baseSelection.eventTitle || baseSelection.eventLocation || '').trim(),
+    minutes,
+    arrivalLabel,
+    stopLabel: String(summary?.departureStop || baseSelection.originLabel || '').trim(),
+    routeDurationMinutes: getMinutesFromSeconds(routeSeconds),
+    routeDistanceLabel: route.localizedDistance || payload.localizedDistance || '',
+    eventTitle: baseSelection.eventTitle,
+    eventLocation: baseSelection.eventLocation
+  };
+}
+
+function normalizeRouteApiSelections(payload) {
+  const results = payload?.results ||
+    payload?.selections ||
+    payload?.departures ||
+    payload?.routes ||
+    payload?.data ||
+    payload?.result ||
+    [];
+  const rows = Array.isArray(results) ? results : [results];
+
+  return rows
+    .filter((row) => row && typeof row === 'object')
+    .map(normalizeSelectionRow);
+}
+
+async function fetchSelectionsFromRouteApi(userId) {
+  const routeApiUrl = getEdgeFunctionUrl('route-api', CONFIG.routeApiUrl);
+
+  if (!routeApiUrl || !CONFIG.edgeFunctionKey) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(routeApiUrl, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        apikey: CONFIG.edgeFunctionKey,
+        Authorization: `Bearer ${CONFIG.edgeFunctionKey}`
+      },
+      body: JSON.stringify({ userId })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      logger.warn('Route API user lookup failed', `${response.status} ${errorText.slice(0, 200)}`);
+      return [];
+    }
+
+    return normalizeRouteApiSelections(await response.json());
+  } catch (error) {
+    logger.warn('Route API user lookup error', error.message);
+    return [];
+  }
+}
+
+async function enrichSelectionWithRouteApi(selection, userId) {
+  if (selection.stopId && selection.routeShortName) {
+    return selection;
+  }
+
+  const routeApiUrl = getEdgeFunctionUrl('route-api', CONFIG.routeApiUrl);
+
+  if (!routeApiUrl || !CONFIG.edgeFunctionKey) {
+    return selection;
+  }
+
+  try {
+    const response = await fetch(routeApiUrl, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        apikey: CONFIG.edgeFunctionKey,
+        Authorization: `Bearer ${CONFIG.edgeFunctionKey}`
+      },
+      body: JSON.stringify({
+        userId,
+        eventTitle: selection.eventTitle,
+        eventLocation: selection.eventLocation,
+        eventStartTime: selection.eventStartTime,
+        eventEndTime: selection.eventEndTime,
+        calendarEventId: selection.calendarEventId,
+        originLat: selection.originLat,
+        originLng: selection.originLng,
+        destLat: selection.destLat,
+        destLng: selection.destLng,
+        travelMode: hasRouteCoordinates(selection) ? 'TRANSIT' : undefined
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      logger.warn('Route API enrichment failed', `${response.status} ${errorText.slice(0, 200)}`);
+      return selection;
+    }
+
+    return normalizeRouteApiResult(await response.json(), selection);
+  } catch (error) {
+    logger.warn('Route API enrichment error', error.message);
+    return selection;
+  }
+}
+
 async function fetchUserSelections(userId) {
   const normalizedUserId = normalizeUserId(userId).toLowerCase();
 
@@ -168,21 +655,18 @@ async function fetchUserSelections(userId) {
     };
   }
 
-  const { data, error } = await supabase
-    .from(USER_TABLE)
-    .select('*')
-    .order('updated_at', { ascending: false });
+  await maybeSyncCalendar(normalizedUserId);
 
-  if (error) {
-    throw error;
-  }
+  const placeTagRows = await fetchRowsByUserPrefix(USER_PLACE_TAGS_TABLE, normalizedUserId);
+  const userRows = await fetchRowsByUserPrefix(USER_TABLE, normalizedUserId);
+  const sourceRows = placeTagRows.length ? placeTagRows : userRows;
+  const apiSelections = sourceRows.length ? [] : await fetchSelectionsFromRouteApi(normalizedUserId);
+  const matchingUserIds = [...new Set(sourceRows
+    .map((row) => String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '').trim())
+    .filter(Boolean))];
+  const resolvedRouteApiUserId = sourceRows.length ? '' : normalizedUserId;
 
-  const rows = (data || []).filter((row) =>
-    String(row.user_id || '').toLowerCase().startsWith(normalizedUserId)
-  );
-  const matchingUserIds = [...new Set(rows.map((row) => String(row.user_id || '').trim()).filter(Boolean))];
-
-  if (matchingUserIds.length === 0) {
+  if (matchingUserIds.length === 0 && apiSelections.length === 0) {
     return {
       resolvedUserId: '',
       selections: []
@@ -193,16 +677,17 @@ async function fetchUserSelections(userId) {
     throw new Error('Multiple users match this prefix. Enter more than 4 characters.');
   }
 
+  const resolvedUser = matchingUserIds[0] || resolvedRouteApiUserId;
+  const selections = placeTagRows.length
+    ? buildPlaceTagSelections(placeTagRows, resolvedUser)
+    : (sourceRows.length ? sourceRows.map(normalizeSelectionRow) : apiSelections);
+
   return {
-    resolvedUserId: matchingUserIds[0],
-    selections: rows
-    .map((row) => ({
-      stopId: String(row.source_stop_id || '').trim(),
-      routeShortName: String(row.route_short_name || '').trim(),
-      eventTitle: String(row.event_title || row.event_name || row.title || row.name || '').trim(),
-      eventLocation: String(row.event_location || row.location || row.destination_name || '').trim()
-    }))
-    .filter((row) => row.stopId && row.routeShortName)
+    resolvedUserId: resolvedUser,
+    selections: (await Promise.all(selections
+      .filter(isUpcomingSelection)
+      .map((selection) => enrichSelectionWithRouteApi(selection, resolvedUser))))
+      .filter((row) => row.directRoute || (row.stopId && row.routeShortName))
   };
 }
 
@@ -356,6 +841,26 @@ function extractDeparturesForStop(stopId, payload) {
 async function fetchDeparturesForUser(userId) {
   const userSelection = await fetchUserSelections(userId);
   const selections = userSelection.selections;
+  const directDepartures = selections
+    .filter((selection) => selection.directRoute)
+    .map((selection) => ({
+      stopId: selection.stopId || '',
+      line: selection.line || selection.routeShortName || '',
+      destination: selection.destination || selection.eventTitle || selection.eventLocation || '',
+      minutes: selection.minutes,
+      arrivalLabel: selection.arrivalLabel,
+      stopLabel: selection.stopLabel || selection.originLabel || '',
+      transportName: selection.transportName,
+      routeDurationMinutes: selection.routeDurationMinutes,
+      routeDistanceLabel: selection.routeDistanceLabel,
+      eventTitle: selection.eventTitle,
+      eventLocation: selection.eventLocation,
+      eventStartTime: selection.eventStartTime,
+      eventEndTime: selection.eventEndTime,
+      calendarEventId: selection.calendarEventId
+    }))
+    .filter((departure) => Number.isFinite(departure.minutes));
+  const stibSelections = selections.filter((selection) => !selection.directRoute && selection.stopId && selection.routeShortName);
 
   if (selections.length === 0) {
     return {
@@ -364,9 +869,17 @@ async function fetchDeparturesForUser(userId) {
     };
   }
 
+  if (stibSelections.length === 0) {
+    directDepartures.sort((left, right) => left.minutes - right.minutes);
+    return {
+      resolvedUserId: userSelection.resolvedUserId,
+      departures: directDepartures.slice(0, MAX_DISPLAYED_DEPARTURES)
+    };
+  }
+
   const allowedByStop = new Map();
 
-  for (const selection of selections) {
+  for (const selection of stibSelections) {
     if (!allowedByStop.has(selection.stopId)) {
       allowedByStop.set(selection.stopId, new Map());
     }
@@ -395,18 +908,24 @@ async function fetchDeparturesForUser(userId) {
         matchedDepartures.push({
           ...departure,
           eventTitle: selection.eventTitle,
-          eventLocation: selection.eventLocation
+          eventLocation: selection.eventLocation,
+          eventStartTime: selection.eventStartTime,
+          eventEndTime: selection.eventEndTime,
+          calendarEventId: selection.calendarEventId
         });
       }
     }
   }
 
   matchedDepartures.sort((left, right) => left.minutes - right.minutes);
+  const departures = directDepartures.concat(matchedDepartures);
+  departures.sort((left, right) => left.minutes - right.minutes);
+
   return {
     resolvedUserId: userSelection.resolvedUserId,
-    departures: matchedDepartures.slice(0, MAX_DISPLAYED_DEPARTURES).map((departure) => ({
+    departures: departures.slice(0, MAX_DISPLAYED_DEPARTURES).map((departure) => ({
       ...departure,
-      stopLabel: stopNameMap.get(departure.stopId) || `Stop ${departure.stopId}`
+      stopLabel: departure.stopLabel || stopNameMap.get(departure.stopId) || `Stop ${departure.stopId}`
     }))
   };
 }
@@ -501,7 +1020,7 @@ async function main() {
       throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env');
     }
 
-    supabase = createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
+    supabase = createClient(CONFIG.supabaseUrl, CONFIG.supabaseDbKey);
     logger.info('Supabase client initialized');
 
     await initializeDisplay();
