@@ -17,7 +17,8 @@ let currentState = {
   timestamp: new Date().toISOString(),
   selectedUserId: '',
   userLabel: '',
-  departures: []
+  departures: [],
+  scheduleEvents: {}
 };
 
 function getDisplayLabel() {
@@ -121,6 +122,9 @@ async function displayText(text, options = {}) {
   currentState.selectedUserId = getSelectedUserId() || currentState.selectedUserId || '';
   currentState.userLabel = options.userLabel || currentState.userLabel || '';
   currentState.departures = Array.isArray(options.departures) ? options.departures : [];
+  currentState.scheduleEvents = options.scheduleEvents && typeof options.scheduleEvents === 'object'
+    ? options.scheduleEvents
+    : {};
 
   logger.info(`Displaying: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}" (${options.color})`);
 }
@@ -248,7 +252,7 @@ function getDisplayHTML() {
 
     .board-clock {
       font-size: clamp(1.2rem, 2vw, 1.9rem);
-      font-weight: 700;
+      font-weight: 500;
       color: var(--text-main);
       letter-spacing: 0.08em;
       white-space: nowrap;
@@ -290,7 +294,7 @@ function getDisplayHTML() {
 
     .stop-card-title {
       font-size: clamp(0.92rem, 1.2vw, 1.12rem);
-      font-weight: 800;
+      font-weight: 500;
       letter-spacing: 0.06em;
       text-transform: uppercase;
     }
@@ -324,7 +328,7 @@ function getDisplayHTML() {
       border-radius: 50%;
       color: #fff;
       font-size: clamp(0.78rem, 0.95vw, 0.9rem);
-      font-weight: 700;
+      font-weight: 500;
       line-height: 1;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
     }
@@ -345,7 +349,7 @@ function getDisplayHTML() {
     .destination {
       min-width: 0;
       font-size: clamp(0.85rem, 1vw, 0.98rem);
-      font-weight: 700;
+      font-weight: 500;
       line-height: 1.15;
       letter-spacing: 0.04em;
       text-transform: uppercase;
@@ -375,7 +379,7 @@ function getDisplayHTML() {
 
     .minutes-value {
       font-size: clamp(1.35rem, 2.3vw, 2rem);
-      font-weight: 800;
+      font-weight: 500;
       line-height: 0.95;
       color: var(--text-main);
     }
@@ -410,7 +414,7 @@ function getDisplayHTML() {
     .user-form-title,
     .empty-title {
       font-size: clamp(1.8rem, 5vw, 2.9rem);
-      font-weight: 800;
+      font-weight: 500;
       line-height: 0.96;
       letter-spacing: 0.02em;
       color: var(--text-main);
@@ -441,7 +445,7 @@ function getDisplayHTML() {
       background: linear-gradient(180deg, rgba(5, 10, 18, 0.94), rgba(13, 22, 35, 0.84));
       color: var(--text-main);
       font-size: clamp(1.14rem, 2.5vw, 1.45rem);
-      font-weight: 700;
+      font-weight: 500;
       letter-spacing: 0.16em;
       text-transform: uppercase;
       outline: none;
@@ -467,7 +471,7 @@ function getDisplayHTML() {
       background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
       color: white;
       font-size: clamp(1.02rem, 2vw, 1.18rem);
-      font-weight: 700;
+      font-weight: 500;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       cursor: pointer;
@@ -548,7 +552,7 @@ function getDisplayHTML() {
       background: var(--keyboard-key);
       color: var(--text-main);
       font-size: clamp(0.92rem, 1.8vw, 1rem);
-      font-weight: 700;
+      font-weight: 500;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       cursor: pointer;
@@ -844,43 +848,46 @@ function getDisplayHTML() {
 
     .result-title {
       max-width: 100%;
-      font-size: clamp(1.8rem, 4.2vw, 3.6rem);
-      font-weight: 900;
-      line-height: 0.98;
+      font-size: clamp(1.15rem, 2.7vw, 2.25rem);
+      font-weight: 500;
+      line-height: 1.08;
       overflow-wrap: anywhere;
     }
 
     .result-location {
       margin-top: 6px;
       max-width: min(430px, 100%);
-      font-size: clamp(0.9rem, 1.45vw, 1.18rem);
-      line-height: 1.12;
+      font-size: clamp(0.76rem, 1.05vw, 0.96rem);
+      font-weight: 400;
+      line-height: 1.16;
       overflow-wrap: anywhere;
     }
 
     .leave-label {
       margin-top: clamp(10px, 2.4vh, 24px);
-      font-size: clamp(1.05rem, 2.25vw, 1.75rem);
+      font-size: clamp(0.9rem, 1.45vw, 1.18rem);
+      font-weight: 400;
       line-height: 1;
     }
 
     .leave-value {
       margin-top: 2px;
-      font-size: clamp(2.6rem, 5.7vw, 4.6rem);
-      font-weight: 950;
-      line-height: 0.95;
+      font-size: clamp(1.65rem, 3.8vw, 3rem);
+      font-weight: 500;
+      line-height: 1;
     }
 
     .arrival-copy {
       max-width: 100%;
       margin-top: clamp(14px, 2.8vh, 26px);
-      font-size: clamp(0.95rem, 1.65vw, 1.35rem);
-      line-height: 1.15;
+      font-size: clamp(0.76rem, 1.15vw, 1rem);
+      font-weight: 400;
+      line-height: 1.2;
       overflow-wrap: anywhere;
     }
 
     .arrival-copy strong {
-      font-weight: 900;
+      font-weight: 400;
     }
 
     .skip-button {
@@ -917,8 +924,8 @@ function getDisplayHTML() {
 
     .schedule-date {
       text-align: center;
-      font-size: clamp(1rem, 1.9vw, 1.35rem);
-      font-weight: 900;
+      font-size: clamp(0.8rem, 1.25vw, 1rem);
+      font-weight: 500;
     }
 
     .schedule-grid {
@@ -942,23 +949,24 @@ function getDisplayHTML() {
     }
 
     .slot-route {
-      font-size: clamp(0.76rem, 1.05vw, 0.95rem);
-      font-weight: 800;
-      line-height: 1.05;
+      font-size: clamp(0.62rem, 0.84vw, 0.78rem);
+      font-weight: 500;
+      line-height: 1.08;
       overflow-wrap: anywhere;
     }
 
     .slot-destination {
       margin-top: 2px;
-      font-size: clamp(0.62rem, 0.82vw, 0.76rem);
-      line-height: 1.05;
+      font-size: clamp(0.54rem, 0.68vw, 0.66rem);
+      font-weight: 400;
+      line-height: 1.08;
       overflow-wrap: anywhere;
     }
 
     .slot-time {
       margin-top: 6px;
-      font-size: clamp(1rem, 1.55vw, 1.32rem);
-      font-weight: 950;
+      font-size: clamp(0.72rem, 1vw, 0.92rem);
+      font-weight: 500;
       line-height: 1;
     }
 
@@ -980,20 +988,88 @@ function getDisplayHTML() {
     }
 
     .urgent-card .result-title {
-      font-size: clamp(2.8rem, 5vw, 6.8rem);
+      font-size: clamp(1.8rem, 3.5vw, 4rem);
+      font-weight: 500;
     }
 
     .urgent-card .leave-label {
       margin-top: clamp(18px, 3vh, 34px);
-      font-size: clamp(1.9rem, 3.2vw, 4.2rem);
+      font-size: clamp(1.2rem, 2.1vw, 2.6rem);
+      font-weight: 400;
     }
 
     .urgent-card .leave-value {
-      font-size: clamp(4.6rem, 8.2vw, 10rem);
+      font-size: clamp(2.8rem, 5.4vw, 6rem);
+      font-weight: 500;
     }
 
     .urgent-card .arrival-copy {
-      font-size: clamp(1.1rem, 1.75vw, 2.25rem);
+      font-size: clamp(0.86rem, 1.25vw, 1.45rem);
+    }
+
+    .message-text.board-screen,
+    .message-text.board-screen * {
+      font-weight: 400 !important;
+      letter-spacing: 0 !important;
+    }
+
+    .message-text.board-screen {
+      font-size: 16px;
+    }
+
+    .primary-panel {
+      gap: 8px;
+      overflow: visible;
+    }
+
+    .result-title,
+    .urgent-card .result-title {
+      font-size: clamp(1.15rem, 2.1vw, 1.9rem) !important;
+      line-height: 1.18 !important;
+    }
+
+    .result-location {
+      font-size: clamp(0.72rem, 0.95vw, 0.88rem) !important;
+      line-height: 1.18 !important;
+    }
+
+    .leave-label,
+    .urgent-card .leave-label {
+      margin-top: 8px !important;
+      font-size: clamp(0.86rem, 1.2vw, 1rem) !important;
+    }
+
+    .leave-value,
+    .urgent-card .leave-value {
+      font-size: clamp(1.45rem, 3vw, 2.6rem) !important;
+      line-height: 1.05 !important;
+    }
+
+    .arrival-copy,
+    .urgent-card .arrival-copy {
+      margin-top: 10px !important;
+      font-size: clamp(0.72rem, 1vw, 0.92rem) !important;
+      line-height: 1.22 !important;
+    }
+
+    .schedule-date {
+      font-size: clamp(0.86rem, 1.2vw, 1rem) !important;
+    }
+
+    .slot-route {
+      font-size: clamp(0.6rem, 0.76vw, 0.72rem) !important;
+    }
+
+    .slot-destination {
+      font-size: clamp(0.52rem, 0.64vw, 0.6rem) !important;
+    }
+
+    .slot-time {
+      font-size: clamp(0.64rem, 0.84vw, 0.78rem) !important;
+    }
+
+    .skip-button {
+      font-size: clamp(0.82rem, 1.15vw, 1rem) !important;
     }
 
     @media (max-width: 1280px) {
@@ -1102,6 +1178,7 @@ function getDisplayHTML() {
 
     let lastText = '';
     let lastUserId = '';
+    let lastScheduleKey = '';
     let updateInterval;
     let autoScrollInterval;
     let isSubmitting = false;
@@ -1271,6 +1348,12 @@ function getDisplayHTML() {
     }
 
     function getMinuteValue(item) {
+      const eventMinutes = getEventMinuteValue(item);
+
+      if (eventMinutes) {
+        return eventMinutes;
+      }
+
       return String(item.minutes ?? '').replace(/\s*min$/i, '').trim() || '--';
     }
 
@@ -1284,7 +1367,11 @@ function getDisplayHTML() {
     }
 
     function getEventLocation(item) {
-      return String(item.eventLocation || item.location || item.stopLabel || 'Registered place').trim() || 'Registered place';
+      return String(item.displayLocation || item.locationLabel || item.destinationTagKey || item.eventLocation || item.location || '').trim();
+    }
+
+    function getCalendarEventLocation(item) {
+      return String(item.eventLocation || item.location || '').trim();
     }
 
     function getTimeLabelFromValue(value) {
@@ -1305,6 +1392,32 @@ function getDisplayHTML() {
       }
 
       return '';
+    }
+
+    function isCalendarEvent(item) {
+      return Boolean(item && (item.eventStartTime || item.startDate || item.start_date || item.startsAt || item.starts_at));
+    }
+
+    function getEventStartValue(item) {
+      return item.eventStartTime || item.startDate || item.start_date || item.startsAt || item.starts_at || '';
+    }
+
+    function getEventEndValue(item) {
+      return item.eventEndTime || item.endDate || item.end_date || item.endsAt || item.ends_at || '';
+    }
+
+    function getEventMinuteValue(item) {
+      if (!isCalendarEvent(item)) {
+        return '';
+      }
+
+      const startDate = new Date(getEventStartValue(item));
+
+      if (Number.isNaN(startDate.getTime())) {
+        return '';
+      }
+
+      return String(Math.max(0, Math.ceil((startDate.getTime() - Date.now()) / 60000)));
     }
 
     function getArrivalHour(item) {
@@ -1328,11 +1441,30 @@ function getDisplayHTML() {
     }
 
     function getEventHour(item) {
-      return getTimeLabelFromValue(item.eventStartTime || item.startTime || item.startsAt) || getArrivalHour(item);
+      const startLabel = getTimeLabelFromValue(getEventStartValue(item));
+      const endLabel = getTimeLabelFromValue(getEventEndValue(item));
+
+      if (startLabel && endLabel) {
+        return startLabel + '-' + endLabel;
+      }
+
+      return startLabel || getArrivalHour(item);
     }
 
     function getDepartureKey(item) {
+      if (isCalendarEvent(item)) {
+        return [
+          'event',
+          item.calendarEventId || item.id || getEventTitle(item),
+          getEventStartValue(item),
+          getEventEndValue(item)
+        ].join('|');
+      }
+
       return [
+        'departure',
+        item.calendarEventId || item.id || '',
+        getEventStartValue(item),
         getDepartureLine(item),
         item.destination || '',
         item.stopId || item.stopLabel || '',
@@ -1350,6 +1482,31 @@ function getDisplayHTML() {
       });
     }
 
+    function getDayKey(offsetDays) {
+      const date = new Date();
+      date.setDate(date.getDate() + offsetDays);
+
+      return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0')
+      ].join('-');
+    }
+
+    function getItemDayKey(item) {
+      const date = new Date(getEventStartValue(item));
+
+      if (Number.isNaN(date.getTime())) {
+        return '';
+      }
+
+      return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0')
+      ].join('-');
+    }
+
     function buildScheduleSlot(item, isActive) {
       if (!item) {
         return '<div class="schedule-slot" aria-hidden="true"></div>';
@@ -1358,21 +1515,33 @@ function getDisplayHTML() {
       return '<div class="schedule-slot' + (isActive ? ' is-active' : '') + '">' +
         '<div>' +
           '<div class="slot-route">' + escapeHtml(getEventTitle(item)) + '</div>' +
-          '<div class="slot-destination">' + escapeHtml(getEventLocation(item)) + '</div>' +
-          '<div class="slot-time">' + escapeHtml(getEventHour(item)) + 'h</div>' +
+          (getCalendarEventLocation(item) ? '<div class="slot-destination">' + escapeHtml(getCalendarEventLocation(item)) + '</div>' : '') +
+          '<div class="slot-time">' + escapeHtml(getEventHour(item)) + '</div>' +
         '</div>' +
       '</div>';
     }
 
     function buildSchedulePanel(arrivals) {
-      const slots = arrivals.slice(0, 3);
+      const todayKey = getDayKey(0);
+      const tomorrowKey = getDayKey(1);
+      const visibleScheduleArrivals = arrivals.filter((item) => !skippedDepartureKeys.has(getDepartureKey(item)));
+      const todayEvents = visibleScheduleArrivals
+        .filter((item) => getItemDayKey(item) === todayKey)
+        .slice(0, 3);
+      const tomorrowEvents = visibleScheduleArrivals
+        .filter((item) => getItemDayKey(item) === tomorrowKey)
+        .slice(0, 3);
 
-      while (slots.length < 3) {
-        slots.push(null);
+      while (todayEvents.length < 3) {
+        todayEvents.push(null);
       }
 
-      const gridSlots = slots
-        .map((item, index) => buildScheduleSlot(item, index === 0) + buildScheduleSlot(null, false))
+      while (tomorrowEvents.length < 3) {
+        tomorrowEvents.push(null);
+      }
+
+      const gridSlots = todayEvents
+        .map((item, index) => buildScheduleSlot(item, index === 0) + buildScheduleSlot(tomorrowEvents[index], false))
         .join('');
 
       return '<aside class="schedule-panel">' +
@@ -1384,39 +1553,60 @@ function getDisplayHTML() {
       '</aside>';
     }
 
-    function buildArrivalCopy(item) {
-      const transportLabel = getTrainTitle(item);
-      const destination = String(item.destination || '').trim();
+    function buildArrivalCopy(item, liveDeparture) {
+      const transitItem = isCalendarEvent(item) && liveDeparture ? liveDeparture : item;
+      const transportLabel = getTrainTitle(transitItem);
+      const destination = String(transitItem.destination || '').trim();
       const destinationCopy = destination ? ' to ' + escapeHtml(destination) : '';
 
-      return '<div class="arrival-copy"><strong>' + escapeHtml(transportLabel) + destinationCopy + '</strong> arrives at the station at: <strong>' +
-        escapeHtml(getArrivalHour(item)) + '</strong></div>';
+      if (isCalendarEvent(item) && liveDeparture) {
+        const stopLabel = String(liveDeparture.stopLabel || '').trim();
+        const stationCopy = stopLabel ? escapeHtml(stopLabel) : 'the station';
+
+        return '<div class="arrival-copy">' + escapeHtml(transportLabel) + destinationCopy +
+          ' arrives at ' + stationCopy + ' at: ' + escapeHtml(getArrivalHour(liveDeparture)) + '</div>';
+      }
+
+      if (isCalendarEvent(item)) {
+        return '<div class="arrival-copy">Starts at: ' +
+          escapeHtml(getEventHour(item)) + '</div>';
+      }
+
+      return '<div class="arrival-copy">' + escapeHtml(transportLabel) + destinationCopy + ' arrives at the station at: ' +
+        escapeHtml(getArrivalHour(item)) + '</div>';
     }
 
-    function buildDepartureDashboard(arrivals) {
+    function shouldShowUrgentDetails(item) {
+      const minutes = Number.parseInt(getMinuteValue(item), 10);
+      return Number.isFinite(minutes) && minutes <= 5;
+    }
+
+    function buildDepartureDashboard(arrivals, departures) {
       const primary = arrivals[0];
+      const liveDeparture = Array.isArray(departures) ? departures[0] : null;
       const minutes = getMinuteValue(primary);
       const title = getEventTitle(primary);
       const location = getEventLocation(primary);
+      const urgentDetails = shouldShowUrgentDetails(primary)
+        ? '<h1 class="result-title">' + escapeHtml(title) + '</h1>' +
+          '<div class="leave-label">Leave In:</div>' +
+          '<div class="leave-value">' + escapeHtml(minutes) + ' Min</div>' +
+          buildArrivalCopy(primary, liveDeparture)
+        : '';
 
       return '<div class="departure-dashboard">' +
         '<section class="preview-card">' +
           '<div class="primary-panel">' +
             '<h1 class="result-title">' + escapeHtml(title) + '</h1>' +
-            '<div class="result-location">Location: ' + escapeHtml(location) + '</div>' +
+            (location ? '<div class="result-location">' + escapeHtml(location) + '</div>' : '') +
             '<div class="leave-label">Leave In:</div>' +
             '<div class="leave-value">' + escapeHtml(minutes) + ' Min</div>' +
-            buildArrivalCopy(primary) +
+            buildArrivalCopy(primary, liveDeparture) +
             '<button class="skip-button" type="button">Skip Event</button>' +
           '</div>' +
           buildSchedulePanel(arrivals) +
         '</section>' +
-        '<section class="urgent-card">' +
-          '<h1 class="result-title">' + escapeHtml(title) + '</h1>' +
-          '<div class="leave-label">Leave In:</div>' +
-          '<div class="leave-value">' + escapeHtml(minutes) + ' Min</div>' +
-          buildArrivalCopy(primary) +
-        '</section>' +
+        '<section class="urgent-card">' + urgentDetails + '</section>' +
       '</div>';
     }
 
@@ -1560,35 +1750,72 @@ function getDisplayHTML() {
       const selectedUserId = String(data.selectedUserId || '').trim();
       const userLabel = String(data.userLabel || '').trim();
       const departures = Array.isArray(data.departures) ? data.departures : [];
+      const scheduleEvents = data.scheduleEvents && typeof data.scheduleEvents === 'object' ? data.scheduleEvents : {};
+      const scheduleArrivals = Object.values(scheduleEvents)
+        .filter(Array.isArray)
+        .flat()
+        .sort((left, right) => {
+          const leftTime = new Date(getEventStartValue(left)).getTime();
+          const rightTime = new Date(getEventStartValue(right)).getTime();
+
+          if (Number.isNaN(leftTime) && Number.isNaN(rightTime)) {
+            return 0;
+          }
+
+          if (Number.isNaN(leftTime)) {
+            return 1;
+          }
+
+          if (Number.isNaN(rightTime)) {
+            return -1;
+          }
+
+          return leftTime - rightTime;
+        });
       const lines = normalizedText.split(NEWLINE).map((line) => line.trim()).filter(Boolean);
-      const arrivals = departures.length ? departures : lines.map(parseArrivalLine).filter(Boolean);
+      const arrivals = scheduleArrivals.length
+        ? scheduleArrivals
+        : (departures.length ? departures : lines.map(parseArrivalLine).filter(Boolean));
+      const hasScheduleArrivals = scheduleArrivals.length > 0;
 
       if (!selectedUserId) {
         stopAutoScroll();
         renderUserForm('', '');
         lastUserId = '';
         lastText = data.text || '';
+        lastScheduleKey = JSON.stringify(data.scheduleEvents || {});
         return;
       }
 
-      if (!arrivals.length || normalizedText === 'No live departures right now' || normalizedText === 'Unable to load departures') {
+      if ((!arrivals.length && !hasScheduleArrivals) ||
+        (!hasScheduleArrivals && (normalizedText === 'No live departures right now' || normalizedText === 'Unable to load departures'))) {
         stopAutoScroll();
         renderEmptyState(normalizedText || 'No live departures right now', userLabel || selectedUserId.slice(0, 4));
         lastUserId = selectedUserId;
         lastText = data.text || '';
+        lastScheduleKey = JSON.stringify(scheduleEvents || {});
         return;
       }
 
       let visibleArrivals = arrivals.filter((arrival) => !skippedDepartureKeys.has(getDepartureKey(arrival)));
 
-      if (!visibleArrivals.length) {
+      if (!visibleArrivals.length && !hasScheduleArrivals) {
         skippedDepartureKeys = new Set();
         visibleArrivals = arrivals;
       }
 
+      if (!visibleArrivals.length) {
+        stopAutoScroll();
+        renderEmptyState('No more events right now', userLabel || selectedUserId.slice(0, 4));
+        lastUserId = selectedUserId;
+        lastText = data.text || '';
+        lastScheduleKey = JSON.stringify(scheduleEvents || {});
+        return;
+      }
+
       setScreenMode('board');
 
-      messageEl.innerHTML = buildDepartureDashboard(visibleArrivals);
+      messageEl.innerHTML = buildDepartureDashboard(visibleArrivals, departures);
 
       messageEl.style.color = '';
       hideKeyboard();
@@ -1604,6 +1831,7 @@ function getDisplayHTML() {
 
       lastUserId = selectedUserId;
       lastText = data.text || '';
+      lastScheduleKey = JSON.stringify(scheduleEvents || {});
     }
 
     async function updateDisplay() {
@@ -1617,7 +1845,9 @@ function getDisplayHTML() {
 
         const data = await response.json();
 
-        if (data.text !== lastText || String(data.selectedUserId || '') !== lastUserId) {
+        const scheduleKey = JSON.stringify(data.scheduleEvents || {});
+
+        if (data.text !== lastText || String(data.selectedUserId || '') !== lastUserId || scheduleKey !== lastScheduleKey) {
           renderMessage(data);
         }
 

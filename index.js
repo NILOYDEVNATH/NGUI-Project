@@ -26,6 +26,7 @@ const STIB_API_URL = 'https://api-management-discovery-production.azure-api.net/
 const STIB_STOP_DETAILS_URL = 'https://api-management-discovery-production.azure-api.net/api/datasets/stibmivb/static/StopDetails';
 const USER_TABLE = 'user';
 const USER_PLACE_TAGS_TABLE = 'user_place_tags';
+const CALENDAR_EVENTS_TABLE = 'calendar_events';
 const POLL_INTERVAL_MS = 20_000;
 const MAX_DISPLAYED_DEPARTURES = 3;
 
@@ -62,6 +63,7 @@ let supabase;
 let pollInterval;
 let isPolling = false;
 let lastDisplayedText = '';
+let lastDisplayedScheduleKey = '';
 let selectedUserId = '';
 let resolvedUserId = '';
 const stopNameCache = new Map();
@@ -112,6 +114,16 @@ async function initializeDisplay() {
 
 function normalizeUserId(value) {
   return String(value || '').trim();
+}
+
+function capitalizeFirstLetter(value) {
+  const normalized = String(value || '').trim().replaceAll('_', ' ');
+
+  if (!normalized) {
+    return '';
+  }
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
 function getUserLabel(userId) {
@@ -189,6 +201,63 @@ function getFirstValue(row, keys, fallback = '') {
   }
 
   return fallback;
+}
+
+function getLocalDateKey(date = new Date(), offsetDays = 0) {
+  const localDate = new Date(date);
+  localDate.setDate(localDate.getDate() + offsetDays);
+
+  const year = localDate.getFullYear();
+  const month = String(localDate.getMonth() + 1).padStart(2, '0');
+  const day = String(localDate.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function getLocalDayRange(offsetDays = 0) {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() + offsetDays);
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  return {
+    start: start.toISOString(),
+    end: end.toISOString()
+  };
+}
+
+function getEventDateKey(row) {
+  const directDate = getFirstValue(row, [
+    'event_date',
+    'calendar_date',
+    'date',
+    'start_date',
+    'event_day',
+    'day'
+  ]);
+
+  if (directDate) {
+    return String(directDate).slice(0, 10);
+  }
+
+  const startValue = getFirstValue(row, [
+    'start_date',
+    'event_start_time',
+    'start_time',
+    'starts_at',
+    'calendar_start',
+    'start',
+    'event_time'
+  ]);
+  const parsedStart = new Date(startValue);
+
+  if (!Number.isNaN(parsedStart.getTime())) {
+    return getLocalDateKey(parsedStart);
+  }
+
+  return '';
 }
 
 function normalizeRouteName(value) {
@@ -277,7 +346,7 @@ function normalizeSelectionRow(row) {
   const destLng = getNumberValue(row, ['destLng', 'dest_lng', 'destination_longitude', 'destination_lng', 'longitude']);
 
   return {
-    userId: String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '').trim(),
+    userId: String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id', 'id']) || '').trim(),
     stopId: String(stopId || '').trim(),
     routeShortName: normalizeRouteName(routeShortName),
     eventTitle: String(eventTitle || '').trim(),
@@ -334,6 +403,81 @@ function buildPlaceTagSelections(rows, resolvedUserId) {
     eventLocation: destination.eventLocation || destination.tagName || destination.tagKey || destination.calendarEventId,
     originLabel: origin.eventTitle || origin.tagName || origin.tagKey || 'Origin'
   }));
+}
+
+function normalizeCalendarEventRow(row) {
+  const eventTitle = getFirstValue(row, ['title', 'event_title', 'event_name', 'calendar_event_title']);
+  const eventLocation = getFirstValue(row, ['location', 'event_location', 'calendar_location']);
+  const eventStartTime = getFirstValue(row, ['start_date', 'starts_at', 'event_start_time', 'start_time', 'calendar_start']);
+  const eventEndTime = getFirstValue(row, ['end_date', 'ends_at', 'event_end_time', 'end_time', 'calendar_end']);
+  const calendarEventId = getFirstValue(row, ['id', 'calendar_event_id', 'google_event_id', 'event_id']);
+
+  return {
+    userId: String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '').trim(),
+    eventTitle: String(eventTitle || '').trim(),
+    eventLocation: String(eventLocation || '').trim(),
+    displayLocation: '',
+    eventStartTime: String(eventStartTime || '').trim(),
+    eventEndTime: String(eventEndTime || '').trim(),
+    calendarEventId: String(calendarEventId || '').trim(),
+    eventDate: getEventDateKey(row)
+  };
+}
+
+function isUpcomingCalendarEvent(event) {
+  const startTime = new Date(event.eventStartTime);
+  const endTime = new Date(event.eventEndTime);
+  const startMs = startTime.getTime();
+  const endMs = endTime.getTime();
+
+  if (Number.isFinite(endMs) && (!Number.isFinite(startMs) || endMs >= startMs)) {
+    return endMs >= Date.now();
+  }
+
+  if (Number.isFinite(startMs)) {
+    return startMs >= Date.now();
+  }
+
+  return true;
+}
+
+function buildCalendarEventSelections(rows, resolvedUserId) {
+  const normalizedUserId = normalizeUserId(resolvedUserId).toLowerCase();
+
+  return rows
+    .filter((row) => String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '')
+      .trim()
+      .toLowerCase()
+      .startsWith(normalizedUserId))
+    .map(normalizeCalendarEventRow)
+    .filter((row) => row.eventTitle || row.eventLocation || row.calendarEventId)
+    .filter(isUpcomingCalendarEvent)
+    .sort((left, right) => {
+      const leftTime = new Date(left.eventStartTime || left.eventDate).getTime();
+      const rightTime = new Date(right.eventStartTime || right.eventDate).getTime();
+
+      if (Number.isNaN(leftTime) && Number.isNaN(rightTime)) {
+        return 0;
+      }
+
+      if (Number.isNaN(leftTime)) {
+        return 1;
+      }
+
+      if (Number.isNaN(rightTime)) {
+        return -1;
+      }
+
+      return leftTime - rightTime;
+    });
+}
+
+function groupCalendarEventsByDate(events, dates) {
+  return dates.reduce((groups, dateKey) => {
+    groups[dateKey] = events
+      .filter((event) => event.eventDate === dateKey);
+    return groups;
+  }, {});
 }
 
 function isUpcomingSelection(selection) {
@@ -398,10 +542,143 @@ async function fetchRowsByUserPrefix(tableName, normalizedUserId) {
   }
 
   return (data || []).filter((row) =>
-    String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '')
+    String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id', 'id']) || '')
       .toLowerCase()
       .startsWith(normalizedUserId)
   );
+}
+
+async function fetchDestinationTagLabel(userId, resolvedUserId = '') {
+  const normalizedUserId = normalizeUserId(resolvedUserId || userId).toLowerCase();
+
+  if (!normalizedUserId) {
+    return '';
+  }
+
+  const rows = await fetchRowsByUserPrefix(USER_TABLE, normalizedUserId);
+  const matchingRow = rows[0];
+  const destinationTagKey = getFirstValue(matchingRow, [
+    'destination_tag_key',
+    'destinationTagKey',
+    'destination_tag',
+    'destinationTag'
+  ]);
+
+  if (destinationTagKey) {
+    return capitalizeFirstLetter(destinationTagKey);
+  }
+
+  return '';
+}
+
+async function fetchCalendarEventRowsByDateColumn(dateColumn, normalizedUserId, dateKeys) {
+  let query = supabase
+    .from(CALENDAR_EVENTS_TABLE)
+    .select('*')
+    .in(dateColumn, dateKeys);
+
+  let { data, error } = await query.order(dateColumn, { ascending: true });
+
+  if (error && String(error.message || '').toLowerCase().includes('order')) {
+    ({ data, error } = await supabase
+      .from(CALENDAR_EVENTS_TABLE)
+      .select('*')
+      .in(dateColumn, dateKeys));
+  }
+
+  if (error) {
+    return { data: [], error };
+  }
+
+  return {
+    data: (data || []).filter((row) =>
+      String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '')
+        .toLowerCase()
+        .startsWith(normalizedUserId)
+    ),
+    error: null
+  };
+}
+
+async function fetchCalendarEventRowsByStartColumn(startColumn, normalizedUserId) {
+  const todayRange = getLocalDayRange(0);
+  const afterTomorrowRange = getLocalDayRange(2);
+
+  let { data, error } = await supabase
+    .from(CALENDAR_EVENTS_TABLE)
+    .select('*')
+    .gte(startColumn, todayRange.start)
+    .lt(startColumn, afterTomorrowRange.start)
+    .order(startColumn, { ascending: true });
+
+  if (error) {
+    return { data: [], error };
+  }
+
+  return {
+    data: (data || []).filter((row) =>
+      String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '')
+        .toLowerCase()
+        .startsWith(normalizedUserId)
+    ),
+    error: null
+  };
+}
+
+async function buildCalendarEventsForDisplay(rows, normalizedUserId, dateKeys, destinationTagLabel) {
+  return buildCalendarEventSelections(rows, normalizedUserId)
+    .filter((event) => dateKeys.includes(event.eventDate))
+    .map((event) => ({
+      ...event,
+      displayLocation: destinationTagLabel || event.eventLocation
+    }));
+}
+
+async function fetchCalendarEventsForDates(userId, resolvedUserId = '') {
+  const normalizedUserId = normalizeUserId(resolvedUserId || userId).toLowerCase();
+  const dateKeys = [getLocalDateKey(), getLocalDateKey(new Date(), 1)];
+
+  if (!normalizedUserId) {
+    return groupCalendarEventsByDate([], dateKeys);
+  }
+
+  const destinationTagLabel = await fetchDestinationTagLabel(userId, resolvedUserId);
+  const startColumns = ['start_date', 'starts_at'];
+
+  for (const startColumn of startColumns) {
+    const startColumnResult = await fetchCalendarEventRowsByStartColumn(startColumn, normalizedUserId);
+
+    if (!startColumnResult.error) {
+      const events = await buildCalendarEventsForDisplay(
+        startColumnResult.data,
+        normalizedUserId,
+        dateKeys,
+        destinationTagLabel
+      );
+      return groupCalendarEventsByDate(events, dateKeys);
+    }
+  }
+
+  const dateColumns = ['event_date', 'calendar_date', 'date', 'start_date'];
+
+  for (const dateColumn of dateColumns) {
+    const { data, error } = await fetchCalendarEventRowsByDateColumn(dateColumn, normalizedUserId, dateKeys);
+
+    if (!error && data.length) {
+      const events = await buildCalendarEventsForDisplay(data, normalizedUserId, dateKeys, destinationTagLabel);
+      return groupCalendarEventsByDate(events, dateKeys);
+    }
+  }
+
+  const fallbackRows = await fetchRowsByUserPrefix(CALENDAR_EVENTS_TABLE, normalizedUserId);
+  const fallbackEvents = await buildCalendarEventsForDisplay(
+    fallbackRows,
+    normalizedUserId,
+    dateKeys,
+    destinationTagLabel
+  );
+
+  return groupCalendarEventsByDate(fallbackEvents, dateKeys);
 }
 
 function normalizeRouteApiResult(payload, baseSelection) {
@@ -662,7 +939,7 @@ async function fetchUserSelections(userId) {
   const sourceRows = placeTagRows.length ? placeTagRows : userRows;
   const apiSelections = sourceRows.length ? [] : await fetchSelectionsFromRouteApi(normalizedUserId);
   const matchingUserIds = [...new Set(sourceRows
-    .map((row) => String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '').trim())
+    .map((row) => String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id', 'id']) || '').trim())
     .filter(Boolean))];
   const resolvedRouteApiUserId = sourceRows.length ? '' : normalizedUserId;
 
@@ -841,6 +1118,7 @@ function extractDeparturesForStop(stopId, payload) {
 async function fetchDeparturesForUser(userId) {
   const userSelection = await fetchUserSelections(userId);
   const selections = userSelection.selections;
+  const scheduleEvents = await fetchCalendarEventsForDates(userId, userSelection.resolvedUserId);
   const directDepartures = selections
     .filter((selection) => selection.directRoute)
     .map((selection) => ({
@@ -865,7 +1143,8 @@ async function fetchDeparturesForUser(userId) {
   if (selections.length === 0) {
     return {
       resolvedUserId: userSelection.resolvedUserId,
-      departures: []
+      departures: [],
+      scheduleEvents
     };
   }
 
@@ -873,7 +1152,8 @@ async function fetchDeparturesForUser(userId) {
     directDepartures.sort((left, right) => left.minutes - right.minutes);
     return {
       resolvedUserId: userSelection.resolvedUserId,
-      departures: directDepartures.slice(0, MAX_DISPLAYED_DEPARTURES)
+      departures: directDepartures.slice(0, MAX_DISPLAYED_DEPARTURES),
+      scheduleEvents
     };
   }
 
@@ -926,7 +1206,8 @@ async function fetchDeparturesForUser(userId) {
     departures: departures.slice(0, MAX_DISPLAYED_DEPARTURES).map((departure) => ({
       ...departure,
       stopLabel: departure.stopLabel || stopNameMap.get(departure.stopId) || `Stop ${departure.stopId}`
-    }))
+    })),
+    scheduleEvents
   };
 }
 
@@ -950,7 +1231,9 @@ async function updateMonitorText(text, options = {}) {
     return;
   }
 
-  if (text === lastDisplayedText) {
+  const scheduleKey = JSON.stringify(options.scheduleEvents || {});
+
+  if (text === lastDisplayedText && scheduleKey === lastDisplayedScheduleKey) {
     logger.debug('Display text unchanged');
     return;
   }
@@ -959,10 +1242,12 @@ async function updateMonitorText(text, options = {}) {
     color: '#FFFFFF',
     timestamp: new Date().toISOString(),
     departures: options.departures || [],
+    scheduleEvents: options.scheduleEvents || {},
     userLabel: options.userLabel || getUserLabel(resolvedUserId || selectedUserId)
   });
 
   lastDisplayedText = text;
+  lastDisplayedScheduleKey = scheduleKey;
   logger.info('Updated monitor text', text);
 }
 
@@ -987,6 +1272,7 @@ async function pollWaitingTimes() {
     resolvedUserId = result.resolvedUserId || '';
     await updateMonitorText(formatDepartureText(result.departures, selectedUserId), {
       departures: result.departures,
+      scheduleEvents: result.scheduleEvents,
       userLabel: getUserLabel(resolvedUserId || selectedUserId)
     });
   } catch (error) {
@@ -1005,6 +1291,7 @@ async function handleUserSelection(userId) {
   selectedUserId = normalizedUserId;
   resolvedUserId = '';
   lastDisplayedText = '';
+  lastDisplayedScheduleKey = '';
 
   logger.info('Selected user ID', normalizedUserId || '(empty)');
 
