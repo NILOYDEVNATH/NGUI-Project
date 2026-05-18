@@ -811,12 +811,16 @@ function getDisplayHTML() {
 
     .departure-dashboard {
       display: grid;
-      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      grid-template-columns: minmax(0, 1fr);
       align-items: stretch;
       gap: clamp(24px, 3vw, 44px);
       width: 100%;
       height: 100%;
       min-height: 0;
+    }
+
+    .departure-dashboard.has-urgent {
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
     }
 
     .preview-card {
@@ -1578,7 +1582,7 @@ function getDisplayHTML() {
 
     function shouldShowUrgentDetails(item) {
       const minutes = Number.parseInt(getMinuteValue(item), 10);
-      return Number.isFinite(minutes) && minutes <= 5;
+      return Number.isFinite(minutes) && minutes > 0 && minutes <= 5;
     }
 
     function buildDepartureDashboard(arrivals, departures) {
@@ -1587,14 +1591,15 @@ function getDisplayHTML() {
       const minutes = getMinuteValue(primary);
       const title = getEventTitle(primary);
       const location = getEventLocation(primary);
-      const urgentDetails = shouldShowUrgentDetails(primary)
+      const showUrgent = shouldShowUrgentDetails(primary);
+      const urgentDetails = showUrgent
         ? '<h1 class="result-title">' + escapeHtml(title) + '</h1>' +
           '<div class="leave-label">Leave In:</div>' +
           '<div class="leave-value">' + escapeHtml(minutes) + ' Min</div>' +
           buildArrivalCopy(primary, liveDeparture)
         : '';
 
-      return '<div class="departure-dashboard">' +
+      return '<div class="departure-dashboard' + (showUrgent ? ' has-urgent' : '') + '">' +
         '<section class="preview-card">' +
           '<div class="primary-panel">' +
             '<h1 class="result-title">' + escapeHtml(title) + '</h1>' +
@@ -1606,7 +1611,7 @@ function getDisplayHTML() {
           '</div>' +
           buildSchedulePanel(arrivals) +
         '</section>' +
-        '<section class="urgent-card">' + urgentDetails + '</section>' +
+        (showUrgent ? '<section class="urgent-card">' + urgentDetails + '</section>' : '') +
       '</div>';
     }
 
