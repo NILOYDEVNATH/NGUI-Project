@@ -426,16 +426,10 @@ function normalizeCalendarEventRow(row) {
 
 function isUpcomingCalendarEvent(event) {
   const startTime = new Date(event.eventStartTime);
-  const endTime = new Date(event.eventEndTime);
   const startMs = startTime.getTime();
-  const endMs = endTime.getTime();
-
-  if (Number.isFinite(endMs) && (!Number.isFinite(startMs) || endMs >= startMs)) {
-    return endMs >= Date.now();
-  }
 
   if (Number.isFinite(startMs)) {
-    return startMs >= Date.now();
+    return startMs > Date.now();
   }
 
   return true;
@@ -485,13 +479,13 @@ function isUpcomingSelection(selection) {
     return true;
   }
 
-  const endTime = new Date(selection.eventEndTime || selection.eventStartTime);
+  const startTime = new Date(selection.eventStartTime);
 
-  if (Number.isNaN(endTime.getTime())) {
+  if (Number.isNaN(startTime.getTime())) {
     return true;
   }
 
-  return endTime.getTime() >= Date.now();
+  return startTime.getTime() > Date.now();
 }
 
 async function maybeSyncCalendar(userId) {

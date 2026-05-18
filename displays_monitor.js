@@ -791,14 +791,14 @@ function getDisplayHTML() {
     .display-container.board-screen-mode {
       place-items: center;
       overflow: hidden;
-      padding: clamp(12px, 3vw, 36px);
+      padding: clamp(6px, 1.5vw, 18px);
     }
 
     .message-text.board-screen {
-      width: min(1760px, 100%);
-      height: min(760px, calc(100vh - clamp(24px, 6vw, 72px)));
+      width: min(1840px, 100%);
+      height: min(820px, calc(100vh - clamp(12px, 3vw, 36px)));
       min-height: 0;
-      max-height: calc(100vh - clamp(24px, 6vw, 72px));
+      max-height: calc(100vh - clamp(12px, 3vw, 36px));
       display: block;
       padding: 0;
       border: 0;
@@ -813,27 +813,23 @@ function getDisplayHTML() {
       display: grid;
       grid-template-columns: minmax(0, 1fr);
       align-items: stretch;
-      gap: clamp(24px, 3vw, 44px);
+      gap: clamp(12px, 1.8vw, 28px);
       width: 100%;
       height: 100%;
       min-height: 0;
-    }
-
-    .departure-dashboard.has-urgent {
-      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
     }
 
     .preview-card {
       display: grid;
       grid-template-columns: minmax(0, 1.05fr) minmax(230px, 0.95fr);
-      gap: clamp(22px, 4vw, 40px);
+      gap: clamp(14px, 2.4vw, 28px);
       align-items: stretch;
       width: 100%;
       height: 100%;
       min-height: 0;
       max-height: none;
-      padding: clamp(20px, 3.2vw, 32px);
-      border: 3px solid #050505;
+      padding: clamp(12px, 2vw, 22px);
+      border: 0;
       border-radius: 16px;
       background: #ffffff;
     }
@@ -983,8 +979,8 @@ function getDisplayHTML() {
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: clamp(28px, 5vw, 58px);
-      border: 3px solid #050505;
+      padding: clamp(16px, 3vw, 36px);
+      border: 0;
       border-radius: 16px;
       background: #ff904d;
       text-align: center;
@@ -1424,6 +1420,20 @@ function getDisplayHTML() {
       return String(Math.max(0, Math.ceil((startDate.getTime() - Date.now()) / 60000)));
     }
 
+    function isFutureCalendarEvent(item) {
+      if (!isCalendarEvent(item)) {
+        return true;
+      }
+
+      const startDate = new Date(getEventStartValue(item));
+
+      if (Number.isNaN(startDate.getTime())) {
+        return true;
+      }
+
+      return startDate.getTime() > Date.now();
+    }
+
     function getArrivalHour(item) {
       const label = getTimeLabelFromValue(item.arrivalLabel);
 
@@ -1564,11 +1574,8 @@ function getDisplayHTML() {
       const destinationCopy = destination ? ' to ' + escapeHtml(destination) : '';
 
       if (isCalendarEvent(item) && liveDeparture) {
-        const stopLabel = String(liveDeparture.stopLabel || '').trim();
-        const stationCopy = stopLabel ? escapeHtml(stopLabel) : 'the station';
-
         return '<div class="arrival-copy">' + escapeHtml(transportLabel) + destinationCopy +
-          ' arrives at ' + stationCopy + ' at: ' + escapeHtml(getArrivalHour(liveDeparture)) + '</div>';
+          ' arrives at Station at: ' + escapeHtml(getArrivalHour(liveDeparture)) + '</div>';
       }
 
       if (isCalendarEvent(item)) {
@@ -1576,7 +1583,7 @@ function getDisplayHTML() {
           escapeHtml(getEventHour(item)) + '</div>';
       }
 
-      return '<div class="arrival-copy">' + escapeHtml(transportLabel) + destinationCopy + ' arrives at the station at: ' +
+      return '<div class="arrival-copy">' + escapeHtml(transportLabel) + destinationCopy + ' arrives at Station at: ' +
         escapeHtml(getArrivalHour(item)) + '</div>';
     }
 
@@ -1599,7 +1606,13 @@ function getDisplayHTML() {
           buildArrivalCopy(primary, liveDeparture)
         : '';
 
-      return '<div class="departure-dashboard' + (showUrgent ? ' has-urgent' : '') + '">' +
+      if (showUrgent) {
+        return '<div class="departure-dashboard has-urgent">' +
+          '<section class="urgent-card">' + urgentDetails + '</section>' +
+        '</div>';
+      }
+
+      return '<div class="departure-dashboard">' +
         '<section class="preview-card">' +
           '<div class="primary-panel">' +
             '<h1 class="result-title">' + escapeHtml(title) + '</h1>' +
@@ -1611,7 +1624,6 @@ function getDisplayHTML() {
           '</div>' +
           buildSchedulePanel(arrivals) +
         '</section>' +
-        (showUrgent ? '<section class="urgent-card">' + urgentDetails + '</section>' : '') +
       '</div>';
     }
 
@@ -1759,6 +1771,7 @@ function getDisplayHTML() {
       const scheduleArrivals = Object.values(scheduleEvents)
         .filter(Array.isArray)
         .flat()
+        .filter(isFutureCalendarEvent)
         .sort((left, right) => {
           const leftTime = new Date(getEventStartValue(left)).getTime();
           const rightTime = new Date(getEventStartValue(right)).getTime();
@@ -1802,7 +1815,9 @@ function getDisplayHTML() {
         return;
       }
 
-      let visibleArrivals = arrivals.filter((arrival) => !skippedDepartureKeys.has(getDepartureKey(arrival)));
+      let visibleArrivals = arrivals.filter((arrival) =>
+        isFutureCalendarEvent(arrival) && !skippedDepartureKeys.has(getDepartureKey(arrival))
+      );
 
       if (!visibleArrivals.length && !hasScheduleArrivals) {
         skippedDepartureKeys = new Set();
