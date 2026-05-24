@@ -205,6 +205,22 @@ npm start
 chromium-browser --kiosk http://localhost:8080
 ```
 
+## Pull Latest Updates on Raspberry Pi
+
+After pushing changes to GitHub from your laptop, update the Pi with:
+
+```bash
+cd /home/pi/NGUI-Project
+./pi-update.sh
+```
+
+This script pulls the latest code, installs dependencies, checks JavaScript syntax, restarts the `supabase-display` service, and prints logs if the service fails. If the browser says `ERR_CONNECTION_REFUSED`, the display server is not running on port `8080`; run the script above or inspect the service manually:
+
+```bash
+sudo systemctl status supabase-display
+sudo journalctl -u supabase-display -n 80 --no-pager
+```
+
 ## Auto-Start with systemd
 
 The included `supabase-display.service` assumes the project is located at `/home/pi/NGUI-Project`.
