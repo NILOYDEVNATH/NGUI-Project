@@ -819,7 +819,7 @@ function getDisplayHTML() {
 
     .message-text.board-screen {
       width: min(1840px, 100%);
-      height: min(820px, calc(100vh - clamp(12px, 3vw, 36px)));
+      height: min(940px, calc(100vh - clamp(12px, 3vw, 36px)));
       min-height: 0;
       max-height: calc(100vh - clamp(12px, 3vw, 36px));
       display: block;
@@ -1041,62 +1041,70 @@ function getDisplayHTML() {
     }
 
     .primary-panel {
-      gap: 8px;
+      gap: clamp(10px, 1.6vh, 20px);
       overflow: visible;
     }
 
     .result-title,
     .urgent-card .result-title {
-      font-size: clamp(1.15rem, 2.1vw, 1.9rem) !important;
-      line-height: 1.18 !important;
+      font-size: clamp(2.4rem, 4.4vw, 4.8rem) !important;
+      line-height: 1.08 !important;
     }
 
     .no-event-title {
-      font-size: clamp(3rem, 7vw, 6rem) !important;
+      font-size: clamp(4.5rem, 9vw, 8.5rem) !important;
     }
 
     .result-location {
-      font-size: clamp(0.72rem, 0.95vw, 0.88rem) !important;
-      line-height: 1.18 !important;
+      max-width: min(720px, 100%);
+      font-size: clamp(1.25rem, 2vw, 2rem) !important;
+      line-height: 1.15 !important;
     }
 
     .leave-label,
     .urgent-card .leave-label {
-      margin-top: 8px !important;
-      font-size: clamp(0.86rem, 1.2vw, 1rem) !important;
+      margin-top: clamp(12px, 2vh, 24px) !important;
+      font-size: clamp(1.45rem, 2.4vw, 2.45rem) !important;
     }
 
     .leave-value,
     .urgent-card .leave-value {
-      font-size: clamp(1.45rem, 3vw, 2.6rem) !important;
+      font-size: clamp(4rem, 7.4vw, 7.5rem) !important;
       line-height: 1.05 !important;
     }
 
     .arrival-copy,
     .urgent-card .arrival-copy {
-      margin-top: 10px !important;
-      font-size: clamp(0.72rem, 1vw, 0.92rem) !important;
-      line-height: 1.22 !important;
+      margin-top: clamp(12px, 2.2vh, 28px) !important;
+      max-width: min(820px, 100%);
+      font-size: clamp(1.2rem, 1.85vw, 1.9rem) !important;
+      line-height: 1.18 !important;
     }
 
     .schedule-date {
-      font-size: clamp(0.86rem, 1.2vw, 1rem) !important;
+      font-size: clamp(1.35rem, 2vw, 2rem) !important;
     }
 
     .slot-route {
-      font-size: clamp(0.6rem, 0.76vw, 0.72rem) !important;
+      font-size: clamp(1.05rem, 1.5vw, 1.45rem) !important;
+      line-height: 1.06 !important;
     }
 
     .slot-destination {
-      font-size: clamp(0.52rem, 0.64vw, 0.6rem) !important;
+      margin-top: 6px !important;
+      font-size: clamp(0.86rem, 1.18vw, 1.15rem) !important;
+      line-height: 1.08 !important;
     }
 
     .slot-time {
-      font-size: clamp(0.64rem, 0.84vw, 0.78rem) !important;
+      margin-top: 10px !important;
+      font-size: clamp(1.05rem, 1.55vw, 1.5rem) !important;
     }
 
     .skip-button {
-      font-size: clamp(0.82rem, 1.15vw, 1rem) !important;
+      width: min(520px, 92%);
+      min-height: 76px;
+      font-size: clamp(1.35rem, 2.15vw, 2.1rem) !important;
     }
 
     @media (max-width: 1280px) {
