@@ -35,6 +35,11 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
+/**
+ * Writes timestamped application logs to both stdout and the configured log file.
+ * The display is often run as a systemd service on a Raspberry Pi, so file logs
+ * make it possible to diagnose network, Supabase, and STIB API failures later.
+ */
 class Logger {
   log(level, message, data = '') {
     const timestamp = new Date().toISOString();
@@ -68,6 +73,11 @@ let selectedUserId = '';
 let resolvedUserId = '';
 const stopNameCache = new Map();
 
+/**
+ * Loads and starts each configured output module.
+ * Supported display types are monitor, kiosk, and led; the monitor and kiosk
+ * modes share the same browser server but expose different input behavior.
+ */
 async function initializeDisplay() {
   logger.info('Initializing display modules...');
   let initializedCount = 0;
@@ -279,6 +289,11 @@ function getBooleanValue(value) {
   return ['true', '1', 'yes'].includes(String(value || '').trim().toLowerCase());
 }
 
+/**
+ * Converts rows from Supabase or the route Edge Function into one internal
+ * selection shape. Several column aliases are accepted so the display can work
+ * with small schema changes during prototyping.
+ */
 function normalizeSelectionRow(row) {
   const stopId = getFirstValue(row, [
     'source_stop_id',
@@ -372,6 +387,11 @@ function hasRouteCoordinates(selection) {
     Number.isFinite(selection.destLng);
 }
 
+/**
+ * Builds origin-to-destination selections from user place-tag rows.
+ * The required/home row becomes the origin and the remaining tagged places
+ * become destinations that can be enriched by the route API.
+ */
 function buildPlaceTagSelections(rows, resolvedUserId) {
   const userRows = rows
     .filter((row) => String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '').trim() === resolvedUserId)
@@ -413,6 +433,7 @@ function normalizeCalendarEventRow(row) {
   const calendarEventId = getFirstValue(row, ['id', 'calendar_event_id', 'google_event_id', 'event_id']);
 
   return {
+    sourceType: 'calendar_event',
     userId: String(getFirstValue(row, ['user_id', 'userId', 'owner_id', 'profile_id']) || '').trim(),
     eventTitle: String(eventTitle || '').trim(),
     eventLocation: String(eventLocation || '').trim(),
@@ -628,6 +649,12 @@ async function buildCalendarEventsForDisplay(rows, normalizedUserId, dateKeys, d
     }));
 }
 
+/**
+ * Loads today's and tomorrow's calendar events for the selected user.
+ * The function tries common date/start column names before falling back to a
+ * prefix-based scan, which keeps the UI usable across different Supabase table
+ * layouts used in the project.
+ */
 async function fetchCalendarEventsForDates(userId, resolvedUserId = '') {
   const normalizedUserId = normalizeUserId(resolvedUserId || userId).toLowerCase();
   const dateKeys = [getLocalDateKey(), getLocalDateKey(new Date(), 1)];
@@ -916,6 +943,12 @@ async function enrichSelectionWithRouteApi(selection, userId) {
   }
 }
 
+/**
+ * Resolves the short user code entered on the display into concrete transit
+ * selections. Data is loaded from place tags, the user table, or the route Edge
+ * Function, then enriched until each selection has either a direct departure or
+ * the stop/line pair required for the STIB waiting-time API.
+ */
 async function fetchUserSelections(userId) {
   const normalizedUserId = normalizeUserId(userId).toLowerCase();
 
@@ -962,6 +995,11 @@ async function fetchUserSelections(userId) {
   };
 }
 
+/**
+ * Fetches live STIB/MIVB waiting-time data for a single stop id.
+ * The returned payload is parsed later so multiple route filters can share one
+ * network request per stop.
+ */
 async function fetchWaitingTimesForStop(stopId) {
   const url = new URL(STIB_API_URL);
   url.searchParams.set('where', `pointid=${stopId}`);
@@ -1076,6 +1114,11 @@ function formatArrivalLabel(expectedArrivalTime, fallbackMinutes = null) {
   return '--:--:--';
 }
 
+/**
+ * Extracts usable departures from a STIB waiting-time payload.
+ * Cancelled, end-of-service, reserve, and unknown-destination rows are filtered
+ * out before the UI receives the data.
+ */
 function extractDeparturesForStop(stopId, payload) {
   const results = Array.isArray(payload?.results) ? payload.results : [];
   const departures = [];
@@ -1109,6 +1152,11 @@ function extractDeparturesForStop(stopId, payload) {
   return departures;
 }
 
+/**
+ * Coordinates the full data pipeline for the selected user:
+ * resolve saved selections, load calendar context, fetch STIB live data, merge
+ * direct route API results, and return the next departures sorted by urgency.
+ */
 async function fetchDeparturesForUser(userId) {
   const userSelection = await fetchUserSelections(userId);
   const selections = userSelection.selections;
@@ -1219,6 +1267,10 @@ function formatDepartureText(departures, userId) {
     .join('\n');
 }
 
+/**
+ * Pushes a new state snapshot into the browser display module.
+ * Repeated state is ignored to avoid unnecessary browser re-renders.
+ */
 async function updateMonitorText(text, options = {}) {
   if (!displayManager.monitor) {
     logger.warn('Monitor display is not initialized');
@@ -1245,6 +1297,10 @@ async function updateMonitorText(text, options = {}) {
   logger.info('Updated monitor text', text);
 }
 
+/**
+ * Periodic polling loop for live departure updates.
+ * A lock prevents overlapping API cycles when a previous request is slow.
+ */
 async function pollWaitingTimes() {
   if (isPolling) {
     logger.warn('Previous polling cycle still running, skipping this tick');
@@ -1280,6 +1336,10 @@ async function pollWaitingTimes() {
   }
 }
 
+/**
+ * Handles a user id submitted from the browser UI and immediately refreshes the
+ * live departures for that user.
+ */
 async function handleUserSelection(userId) {
   const normalizedUserId = normalizeUserId(userId).toLowerCase();
   selectedUserId = normalizedUserId;
@@ -1292,6 +1352,10 @@ async function handleUserSelection(userId) {
   await pollWaitingTimes();
 }
 
+/**
+ * Application entry point: validates configuration, creates the Supabase
+ * client, starts the display server, and schedules the polling loop.
+ */
 async function main() {
   try {
     logger.info('Starting user-based STIB waiting-time display system');

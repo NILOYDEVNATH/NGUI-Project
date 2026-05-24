@@ -727,16 +727,3 @@ await supabase.from('messages').insert({
   display_duration_ms: 5000
 });
 ```
-
----
-
-## Next Steps
-
-- **Add Authentication**: Restrict who can post messages
-- **Queue System**: Handle multiple messages gracefully
-- **Animations**: Add scrolling text, fade effects
-- **Persistence**: Store message history
-- **Remote Control**: Web dashboard for message management
-- **Sensors**: Display temperature, weather, traffic data
-
-Good luck! 🚀

@@ -13,9 +13,14 @@ const logger = {
   error: (msg, data) => console.error(`[LED] ${msg}`, data || '')
 };
 
-let ledPythonPath = path.join(__dirname, '..', 'led_driver.py');
+let ledPythonPath = path.join(__dirname, 'led_driver.py');
 let isInitialized = false;
 
+/**
+ * Verifies that the Python LED driver is available before LED rendering is used.
+ * Hardware access is delegated to Python because the Adafruit matrix libraries
+ * are Python-first on Raspberry Pi.
+ */
 async function init() {
   try {
     // Check if Python LED driver exists
@@ -34,6 +39,11 @@ async function init() {
   }
 }
 
+/**
+ * Sends text and color data to the LED matrix driver.
+ * Calls are ignored when LED support is not initialized so the monitor display
+ * can continue running on machines without GPIO hardware.
+ */
 async function displayText(text, options = {}) {
   if (!isInitialized) {
     logger.warn('LED display not initialized, skipping display');
@@ -53,6 +63,9 @@ async function displayText(text, options = {}) {
   }
 }
 
+/**
+ * Converts a CSS-style hex color into RGB channel values for the Python driver.
+ */
 function parseColor(hexColor) {
   const hex = (hexColor || '#FFFFFF').replace('#', '');
   
@@ -67,6 +80,9 @@ function parseColor(hexColor) {
   return { r: 255, g: 255, b: 255 };
 }
 
+/**
+ * Runs `led_driver.py` as a short-lived subprocess with timeout protection.
+ */
 function runPythonLEDDriver(text, color) {
   return new Promise((resolve, reject) => {
     execFile('python3', [
@@ -89,6 +105,9 @@ function runPythonLEDDriver(text, color) {
   });
 }
 
+/**
+ * Placeholder cleanup hook kept for parity with the monitor display module.
+ */
 async function cleanup() {
   logger.info('LED display cleaned up');
 }

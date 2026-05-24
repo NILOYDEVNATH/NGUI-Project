@@ -18,7 +18,22 @@ except ImportError:
 
 
 class LEDDisplay:
+    """Manage drawing text to an Adafruit RGB LED matrix.
+
+    The class owns the optional hardware matrix connection and provides a small
+    rendering API that can also run in mock mode when the hardware library is
+    unavailable. This keeps local development possible on non-Raspberry Pi
+    computers.
+    """
+
     def __init__(self, rows=32, cols=64, brightness=100):
+        """Create the matrix connection using the requested dimensions.
+
+        Args:
+            rows: Number of physical LED rows.
+            cols: Number of physical LED columns.
+            brightness: Matrix brightness from 0 to 100.
+        """
         self.rows = rows
         self.cols = cols
         self.brightness = brightness
@@ -37,7 +52,14 @@ class LEDDisplay:
                 print(f"Failed to initialize LED matrix: {e}", file=sys.stderr)
     
     def render_text(self, text, r=255, g=255, b=255):
-        """Render text on the LED matrix"""
+        """Render wrapped text centered on the LED matrix.
+
+        Args:
+            text: Message to draw.
+            r: Red color channel from 0 to 255.
+            g: Green color channel from 0 to 255.
+            b: Blue color channel from 0 to 255.
+        """
         try:
             # Create image
             image = Image.new("RGB", (self.cols, self.rows), color=(0, 0, 0))
@@ -85,7 +107,7 @@ class LEDDisplay:
             print(f"Error rendering text: {e}", file=sys.stderr)
     
     def clear(self):
-        """Clear the display"""
+        """Clear the physical matrix by drawing a black image."""
         try:
             image = Image.new("RGB", (self.cols, self.rows), color=(0, 0, 0))
             if self.matrix:
@@ -95,7 +117,7 @@ class LEDDisplay:
 
 
 def wrap_text(text, max_width, draw, font):
-    """Wrap text to fit within max_width"""
+    """Wrap text so it fits within the available matrix width."""
     words = text.split()
     lines = []
     current_line = ""
@@ -119,6 +141,7 @@ def wrap_text(text, max_width, draw, font):
 
 
 def main():
+    """Parse command-line arguments and render one LED message."""
     parser = argparse.ArgumentParser(description='Display text on LED matrix')
     parser.add_argument('text', help='Text to display')
     parser.add_argument('--red', type=int, default=255, help='Red component (0-255)')

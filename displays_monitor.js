@@ -30,6 +30,11 @@ const logger = {
   error: (msg, data) => console.error(`[${getDisplayLabel()}] ${msg}`, data || '')
 };
 
+/**
+ * Starts the HTTP server that renders the browser-based departure board.
+ * The optional callbacks let index.js receive user-id submissions and expose
+ * the currently selected user to the browser state endpoint.
+ */
 async function init(port = 8080, options = {}) {
   onUserIdSubmit = typeof options.onUserIdSubmit === 'function' ? options.onUserIdSubmit : onUserIdSubmit;
   getSelectedUserId = typeof options.getSelectedUserId === 'function' ? options.getSelectedUserId : getSelectedUserId;
@@ -49,6 +54,11 @@ async function init(port = 8080, options = {}) {
   });
 }
 
+/**
+ * Routes the small local HTTP API used by the display:
+ * `/` serves the UI, `/api/current` exposes the latest state, `/api/user`
+ * accepts a selected user id, and `/api/health` supports service checks.
+ */
 async function handleRequest(req, res) {
   try {
     if (req.method === 'GET' && req.url === '/') {
@@ -95,6 +105,9 @@ async function handleRequest(req, res) {
   }
 }
 
+/**
+ * Reads and parses a JSON request body from Node's raw HTTP stream.
+ */
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
@@ -115,6 +128,11 @@ function readJsonBody(req) {
   });
 }
 
+/**
+ * Updates the in-memory state consumed by the browser polling loop.
+ * The state includes the plain text fallback, structured departures, schedule
+ * events, selected user, and visual metadata.
+ */
 async function displayText(text, options = {}) {
   currentState.text = text;
   currentState.color = options.color || '#FFFFFF';
@@ -129,6 +147,11 @@ async function displayText(text, options = {}) {
   logger.info(`Displaying: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}" (${options.color})`);
 }
 
+/**
+ * Generates the complete single-page display application.
+ * Keeping the HTML, CSS, and browser JavaScript in one response makes the
+ * Raspberry Pi kiosk setup simple because no asset build step is required.
+ */
 function getDisplayHTML() {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1028,6 +1051,10 @@ function getDisplayHTML() {
       line-height: 1.18 !important;
     }
 
+    .no-event-title {
+      font-size: clamp(3rem, 7vw, 6rem) !important;
+    }
+
     .result-location {
       font-size: clamp(0.72rem, 0.95vw, 0.88rem) !important;
       line-height: 1.18 !important;
@@ -1398,6 +1425,10 @@ function getDisplayHTML() {
       return Boolean(item && (item.eventStartTime || item.startDate || item.start_date || item.startsAt || item.starts_at));
     }
 
+    function isConfirmedCalendarEvent(item) {
+      return Boolean(item && item.sourceType === 'calendar_event' && isCalendarEvent(item));
+    }
+
     function getEventStartValue(item) {
       return item.eventStartTime || item.startDate || item.start_date || item.startsAt || item.starts_at || '';
     }
@@ -1592,7 +1623,18 @@ function getDisplayHTML() {
       return Number.isFinite(minutes) && minutes > 0 && minutes <= 5;
     }
 
-    function buildDepartureDashboard(arrivals, departures) {
+    function buildDepartureDashboard(arrivals, departures, hasScheduleArrivals) {
+      if (!hasScheduleArrivals) {
+        return '<div class="departure-dashboard">' +
+          '<section class="preview-card">' +
+            '<div class="primary-panel">' +
+              '<h1 class="result-title no-event-title">No event</h1>' +
+            '</div>' +
+            buildSchedulePanel([]) +
+          '</section>' +
+        '</div>';
+      }
+
       const primary = arrivals[0];
       const liveDeparture = Array.isArray(departures) ? departures[0] : null;
       const minutes = getMinuteValue(primary);
@@ -1771,6 +1813,7 @@ function getDisplayHTML() {
       const scheduleArrivals = Object.values(scheduleEvents)
         .filter(Array.isArray)
         .flat()
+        .filter(isConfirmedCalendarEvent)
         .filter(isFutureCalendarEvent)
         .sort((left, right) => {
           const leftTime = new Date(getEventStartValue(left)).getTime();
@@ -1835,7 +1878,7 @@ function getDisplayHTML() {
 
       setScreenMode('board');
 
-      messageEl.innerHTML = buildDepartureDashboard(visibleArrivals, departures);
+      messageEl.innerHTML = buildDepartureDashboard(visibleArrivals, departures, hasScheduleArrivals);
 
       messageEl.style.color = '';
       hideKeyboard();
@@ -1900,6 +1943,9 @@ function getDisplayHTML() {
 </html>`;
 }
 
+/**
+ * Stops the HTTP server during process shutdown.
+ */
 async function cleanup() {
   return new Promise((resolve) => {
     if (server) {
